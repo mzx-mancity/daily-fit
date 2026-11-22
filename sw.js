@@ -1,5 +1,5 @@
-/* 每日 Fit Service Worker — app shell 缓存,离线可用(网络优先,离线回落缓存) */
-const CACHE = 'dailyfit-v5';
+/* 每日 Fit Service Worker — app shell 缓存,离线可用(网络优先,断网回落缓存) */
+const CACHE = 'dailyfit-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -22,12 +22,6 @@ self.addEventListener('activate', e => {
   );
 });
 
-// 小文件(chrome 外壳)走网络优先:改了 CSS/JS 刷新即生效,断网回落缓存
-// vendor 里的大文件(OCR 模型,11MB)走缓存优先:避免每次加载都重下
-function isVendor(url) {
-  return url.pathname.indexOf('/vendor/') !== -1;
-}
-
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -37,19 +31,6 @@ self.addEventListener('fetch', e => {
 
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).catch(() => caches.match('./index.html')));
-    return;
-  }
-
-  if (isVendor(url)) {
-    e.respondWith(
-      caches.match(req).then(hit => hit || fetch(req).then(res => {
-        if (res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(req, copy));
-        }
-        return res;
-      }))
-    );
     return;
   }
 

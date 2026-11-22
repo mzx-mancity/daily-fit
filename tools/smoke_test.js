@@ -4,34 +4,31 @@ const src = fs.readFileSync('js/app.js', 'utf8');
 
 function makeEl(id) {
   return {
-    id: id, hidden: false, value: '', checked: false, disabled: false, style: {}, dataset: {}, textContent: '', innerHTML: '', className: '',
+    id: id, hidden: false, value: '', checked: false, disabled: false,
+    style: {}, dataset: {}, textContent: '', innerHTML: '', className: '',
     _listeners: {},
     classList: { add: function(){}, remove: function(){}, toggle: function(){} },
-    addEventListener: function(type, fn) { (this._listeners[type] = this._listeners[type] || []).push(fn); },
+    addEventListener: function(t, fn) { (this._listeners[t] = this._listeners[t] || []).push(fn); },
     closest: function() { return null; },
     click: function() { const self = this; (this._listeners.click || []).forEach(function(fn) { fn({ target: self }); }); }
   };
 }
 const els = {};
 function el(id) { if (!els[id]) els[id] = makeEl(id); return els[id]; }
-[ 'date-title','back-today','prev-day','next-day','rest-tip','items-card','item-input','item-add',
-  'item-list','streak-num','week-num','week-strip','ring-fg','ring-cups','ring-goal','ring-ml',
-  'cup-plus','cup-minus','custom-ml','custom-add','set-cup','set-goal','set-note','water-bars','water-bar-x',
-  'bmi-h','bmi-w','bmi-save','bmi-result','bmi-num','bmi-tag','bmi-pointer','wlist','quick-row',
-  'diet-date','diet-today','diet-prev','diet-next','diet-total','diet-goal','diet-bar','diet-left',
-  'diet-burn','set-kcal','diet-list','food-name','food-kcal','food-add','food-quick','diet-bars',
-  'diet-bar-x','keep-text','keep-import','keep-note','meal-row',
-  'keep-shot','keep-cam','keep-file','keep-file-cam','keep-progress','keep-bar','keep-pct','keep-preview','keep-img',
-  'confirm-chk','confirm-save','confirm-state','confirm-card','hist-list','hist-count'
+[ 'cal-prev','cal-next','cal-month','cal-grid','cal-streak','cal-month-count','cal-today','cal-card',
+  'day-title','day-tag','rest-tip','items-card','item-input','item-add','quick-row','item-list','copy-last',
+  'confirm-chk','confirm-save','confirm-state','confirm-card',
+  'ring-fg','ring-cups','ring-goal','ring-ml','cup-plus','cup-minus','custom-ml','custom-add',
+  'set-cup','set-goal','set-note','water-bars','water-bar-x','water-date',
+  'bmi-h','bmi-w','bmi-save','bmi-result','bmi-num','bmi-tag','bmi-pointer','wlist','btn-export','btn-import'
 ].forEach(el);
 
+const typeBtns = ['cardio','strength','rest'].map(function(t) { const b = makeEl('t-' + t); b.dataset.type = t; return b; });
 const chips = ['臀','腿','肩','胸','背','手臂','核心','跑步','跳绳','游泳','骑行','瑜伽'].map(function(n) {
   const c = makeEl('chip-' + n); c.dataset.name = n; return c;
 });
-const typeBtns = ['cardio','strength','rest'].map(function(t) { const b = makeEl('t-' + t); b.dataset.type = t; return b; });
-const tabs = ['workout','water','diet','me'].map(function(p) { const t = makeEl('tab-' + p); t.dataset.page = p; return t; });
-const pages = ['workout','water','diet','me'].map(function(p) { const pg = makeEl('page-' + p); return pg; });
-const mealBtns = ['早餐','午餐','晚餐','加餐'].map(function(m) { const b = makeEl('meal-' + m); b.dataset.meal = m; return b; });
+const tabs = ['workout','water','me'].map(function(p) { const t = makeEl('tab-' + p); t.dataset.page = p; return t; });
+const pages = ['workout','water','me'].map(function(p) { const g = makeEl('page-' + p); g.id = 'page-' + p; return g; });
 
 const store = {};
 const localStorage = {
@@ -39,9 +36,7 @@ const localStorage = {
   setItem: function(k, v) { store[k] = String(v); }
 };
 const location = { hash: '#workout' };
-const history = { replaceState: function(s, ti, url) {
-  if (url) location.hash = url.indexOf('#') >= 0 ? url.slice(url.indexOf('#')) : '';
-} };
+const history = { replaceState: function(s, t, url) { if (url && url.indexOf('#') >= 0) location.hash = url.slice(url.indexOf('#')); } };
 const document = {
   getElementById: function(id) { return el(id); },
   querySelectorAll: function(sel) {
@@ -49,18 +44,16 @@ const document = {
     if (sel === '.tab') return tabs;
     if (sel === '.page') return pages;
     if (sel === '#quick-row .chip') return chips;
-    if (sel === '#meal-row .meal-btn') return mealBtns;
     return [];
   },
-  createElement: function() { return makeEl('anon'); },
-  head: { appendChild: function(){} },
-  body: { appendChild: function(){} }
+  createElement: function() { return makeEl('anon'); }
 };
 const sandbox = {
   document: document, localStorage: localStorage, location: location, history: history,
   navigator: { serviceWorker: { register: function() { return { catch: function() {} }; } } },
-  window: { addEventListener: function(){}, scrollTo: function(){} }, console: console,
-  setTimeout: function(fn){ return 0; }, clearTimeout: function(){},
+  window: { addEventListener: function(){}, scrollTo: function(){} },
+  console: console,
+  setTimeout: function(){ return 0; }, clearTimeout: function(){},
   confirm: function(){ return true; }, alert: function(){},
   Blob: function(p){ this.size = p ? p.length : 0; },
   URL: { createObjectURL: function(){ return 'blob:t'; }, revokeObjectURL: function(){} },
@@ -70,204 +63,206 @@ vm.createContext(sandbox);
 vm.runInContext(src, sandbox, { filename: 'app.js' });
 
 const fails = [];
-let nChecks = 0;
-function ok(cond, name) { nChecks++; if (cond) console.log('PASS', name); else { fails.push(name); console.log('FAIL', name); } }
-function keyOf(d) { const p = function(n){ return String(n).padStart(2, '0'); };
-  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+let n = 0;
+function ok(cond, name) { n++; if (cond) console.log('PASS', name); else { fails.push(name); console.log('FAIL', name); } }
+function keyOf(d) { const p = function(x){ return String(x).padStart(2,'0'); };
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()); }
 const today = keyOf(new Date());
 function DBd() { return JSON.parse(store['fitlog_v1']); }
-function fire(elm, type) { (elm._listeners[type] || []).forEach(function(fn) { fn({ target: elm }); }); }
-function fireT(elm, type, target) { (elm._listeners[type] || []).forEach(function(fn) { fn({ target: target }); }); }
+function fire(e, t) { (e._listeners[t] || []).forEach(function(fn) { fn({ target: e }); }); }
+function fireT(e, t, target) { (e._listeners[t] || []).forEach(function(fn) { fn({ target: target }); }); }
+function calDayTarget(k) { return { closest: function() { return { dataset: { k: k } }; } }; }
 
-// ---- 锻炼 ----
-fire(typeBtns[0], 'click');
-ok(DBd().days[today].type === 'cardio', 'T1 类型=cardio');
+/* ---- 日历骨架 ---- */
+const now = new Date();
+ok(el('cal-month').textContent === now.getFullYear() + '年' + (now.getMonth()+1) + '月', 'C1 月标题=当前年月');
+const gridHtml = el('cal-grid').innerHTML;
+const cells = (gridHtml.match(/data-k="/g) || []).length;
+const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+ok(cells === daysInMonth, 'C2 日历格子数=本月天数(' + cells + '/' + daysInMonth + ')');
+ok(gridHtml.indexOf('data-k="' + today + '"') !== -1, 'C3 今天那格存在');
+ok(/class="cal-day[^"]*today/.test(gridHtml), 'C4 今天有 today 标记');
+ok(/class="cal-day[^"]*sel/.test(gridHtml), 'C5 默认选中今天');
+
+/* ---- 切月(含跨年) ---- */
+const m0 = el('cal-month').textContent;
+for (let i = 0; i < 13; i++) fire(el('cal-prev'), 'click');
+const m1 = el('cal-month').textContent;
+const d13 = new Date(now.getFullYear(), now.getMonth() - 13, 1);
+ok(m1 === d13.getFullYear() + '年' + (d13.getMonth()+1) + '月', 'C6 连点 13 次上月跨年正确(' + m0 + ' -> ' + m1 + ')');
+for (let i = 0; i < 13; i++) fire(el('cal-next'), 'click');
+ok(el('cal-month').textContent === m0, 'C7 再点 13 次下月回到原月');
+
+/* ---- 点日历选日 ---- */
+const other = keyOf(new Date(now.getFullYear(), now.getMonth(), 15)) === today
+  ? keyOf(new Date(now.getFullYear(), now.getMonth(), 16))
+  : keyOf(new Date(now.getFullYear(), now.getMonth(), 15));
+fireT(el('cal-grid'), 'click', calDayTarget(other));
+ok(el('day-title').textContent.indexOf('月' + Number(other.slice(8)) + '日') !== -1, 'C8 点日历切到该日(' + el('day-title').textContent + ')');
+
+/* ---- 类型 ---- */
+fire(typeBtns[1], 'click');
+ok(DBd().days[other] && DBd().days[other].type === 'strength', 'C9 选无氧入库');
+ok(el('day-tag').textContent.indexOf('无氧') !== -1, 'C10 日期条标签显示无氧(' + el('day-tag').textContent + ')');
+fire(typeBtns[1], 'click');
+ok(!DBd().days[other].type, 'C11 再点同一类型=取消');
+fire(typeBtns[1], 'click');
+
+/* ---- 项目 ---- */
 el('item-input').value = '深蹲';
 fire(el('item-add'), 'click');
-ok(DBd().days[today].items[0].name === '深蹲', 'T2 手动添加项目');
-fire(chips[0], 'click'); fire(chips[0], 'click');
-const names = DBd().days[today].items.map(function(i){ return i.name; });
-ok(names.filter(function(n){ return n === '臀'; }).length === 1, 'T3 chip去重');
+ok(DBd().days[other].items.length === 1 && DBd().days[other].items[0].name === '深蹲', 'C12 添加项目');
+fire(chips[0], 'click');
+fire(chips[0], 'click');
+ok(DBd().days[other].items.filter(function(x){ return x.name === '臀'; }).length === 1, 'C13 chip 去重');
+ok(DBd().days[other].items.length === 2, 'C14 项目数=2');
 
-// ---- 喝水 ----
-for (let i = 0; i < 5; i++) fire(el('cup-plus'), 'click');
-ok(DBd().days[today].cups === 5, 'T4 记5杯');
-fire(el('cup-minus'), 'click');
-ok(DBd().days[today].cups === 4, 'T5 撤销1杯');
-el('custom-ml').value = '125'; fire(el('custom-add'), 'click');
-ok(Math.abs(DBd().days[today].cups - 4.5) < 0.001, 'T6 自定义125ml=+0.5杯');
-el('set-cup').value = '300'; fire(el('set-cup'), 'change');
-el('set-goal').value = '6'; fire(el('set-goal'), 'change');
-ok(DBd().profile.cupMl === 300 && DBd().profile.cupsGoal === 6, 'T7 设置容量/目标');
+fireT(el('item-list'), 'change', { closest: function(sel) {
+  return sel === '.item-done' ? { dataset: { i: '0' }, checked: true } : null; } });
+ok(DBd().days[other].items[0].done === true, 'C15 勾选完成');
 
-// ---- 连续天数 ----
-fire(el('prev-day'), 'click'); fire(typeBtns[1], 'click'); fire(el('back-today'), 'click');
-ok(String(el('streak-num').textContent) === '2', 'T8 连续打卡=2');
+fireT(el('item-list'), 'change', { closest: function(sel) {
+  return sel === '.item-detail' ? { dataset: { i: '0' }, value: '4×12' } : null; } });
+ok(DBd().days[other].items[0].detail === '4×12', 'C16 保存详情');
 
-// ---- BMI ----
-el('bmi-h').value = '170'; el('bmi-w').value = '65'; fire(el('bmi-save'), 'click');
-ok(DBd().profile.heightCm === 170, 'T9a 身高已存');
-ok(/22\.5/.test(el('bmi-num').textContent), 'T9b BMI=22.5');
-ok(el('bmi-tag').textContent.indexOf('正常') !== -1, 'T9c 分级=正常');
-ok(DBd().profile.weightLog.length === 1, 'T9d 体重历史1条');
+fireT(el('item-list'), 'click', { closest: function(sel) {
+  return sel === '.item-del' ? { dataset: { i: '1' } } : null; } });
+ok(DBd().days[other].items.length === 1, 'C17 删除项目');
 
-// ---- tab 路由 ----
-fire(tabs[2], 'click');
-ok(location.hash === '#diet', 'T10 tab路由=#diet');
+/* ---- 沿用上次 ---- */
+const later = keyOf(new Date(now.getFullYear(), now.getMonth(), 20));
+fireT(el('cal-grid'), 'click', calDayTarget(later));
+ok(el('copy-last').hidden === false && el('copy-last').textContent.indexOf('沿用') !== -1, 'C18 无项目日出现「沿用上次」');
+fire(el('copy-last'), 'click');
+ok(DBd().days[later].items.length === 1 && DBd().days[later].items[0].name === '深蹲', 'C19 沿用上次复制项目与类型');
+ok(DBd().days[later].type === 'strength', 'C20 沿用上次也复制类型');
 
-// ---- 饮食 ----
-el('food-name').value = '香蕉'; el('food-kcal').value = '105'; fire(el('food-add'), 'click');
-ok(DBd().days[today].foods.length === 1 && DBd().days[today].foods[0].meal === '早餐', 'D1 添加香蕉(早餐)');
-ok(String(el('diet-total').textContent) === '105', 'D2 今日摄入=105');
-
-fireT(el('food-quick'), 'click', { closest: function() {
-  return { dataset: { name: '米饭', kcal: '174' } }; } });
-ok(String(el('diet-total').textContent) === '279', 'D3 快捷chip加米饭→279');
-
-fireT(el('diet-list'), 'click', { closest: function() {
-  return { dataset: { act: 'plus', i: '1' } }; } });
-ok(Math.abs(DBd().days[today].foods[1].qty - 1.5) < 0.001, 'D4 份数+0.5');
-ok(String(el('diet-total').textContent) === '366', 'D5 米饭1.5碗→366');
-
-fireT(el('diet-list'), 'click', { closest: function() {
-  return { dataset: { act: 'del', i: '0' } }; } });
-ok(String(el('diet-total').textContent) === '261', 'D6 删除香蕉→261');
-
-// 自定义食物入库
-el('food-name').value = '麦片杯'; el('food-kcal').value = '210'; fire(el('food-add'), 'click');
-ok(DBd().foods.some(function(f){ return f.name === '麦片杯'; }), 'D7 自定义食物进库');
-ok(el('food-quick').innerHTML.indexOf('麦片杯') !== -1, 'D8 自定义食物出现在快捷区');
-
-// 目标
-el('set-kcal').value = '2000'; fire(el('set-kcal'), 'change');
-ok(DBd().profile.kcalGoal === 2000 && String(el('diet-goal').textContent) === '2000', 'D9 目标=2000');
-
-// 超出提示
-el('food-name').value = '大餐'; el('food-kcal').value = '3000'; fire(el('food-add'), 'click');
-ok(String(el('diet-left').textContent).indexOf('超出') !== -1, 'D10 超标提示(' + el('diet-left').textContent + ')');
-
-// ---- Keep 导入 ----
-el('keep-text').value = '2026年11月20日 跑步 5.00 公里 用时 00:32:15 消耗 320 千卡';
-fire(el('keep-import'), 'click');
-const kd = '2026-11-20';
-ok(DBd().days[kd] && DBd().days[kd].type === 'cardio', 'K1 Keep 生成有氧记录');
-ok(DBd().days[kd].kcalBurn === 320, 'K2 消耗=320(' + (DBd().days[kd] && DBd().days[kd].kcalBurn) + ')');
-ok(DBd().days[kd].items[0].name === '跑步 5km', 'K3 项目名=跑步 5km(' + DBd().days[kd].items[0].name + ')');
-ok(DBd().days[kd].items[0].detail.indexOf('32 分钟') !== -1, 'K4 详情含时长');
-
-// 无 kcal 时按 MET 估算
-el('keep-text').value = '骑行 40 分钟';
-fire(el('keep-import'), 'click');
-const tb = DBd().days[today].kcalBurn;
-ok(tb > 250 && tb < 400, 'K5 无消耗时按体重估算(' + tb + ' kcal)');
-
-// 无法识别时不写数据
-const before = JSON.stringify(DBd());
-el('keep-text').value = '今天天气不错';
-fire(el('keep-import'), 'click');
-ok(JSON.stringify(DBd()) === before, 'K6 无法识别不改数据');
-ok(el('keep-note').textContent.indexOf('没认出') !== -1, 'K7 提示未识别');
-
-// ---- Keep 截图 OCR 文本解析 ----
-const ocrA = '2026年11月20日 AA\n跑步\n\nD.00 和\n运动时长\n00:32:15\n\n消耗\n\n320 干卡\n平均配速 06\'27" / 公里';
-const pA = sandbox.parseKeepText(ocrA);
-ok(pA.length === 1 && pA[0].date === '2026-11-20', 'K8 OCR 文本按日期切块(' + pA.length + ')');
-ok(pA[0] && pA[0].name === '跑步', 'K9 OCR 识别运动名称(' + (pA[0] && pA[0].name) + ')');
-ok(pA[0] && pA[0].km === 5, 'K10 数字混淆 D.00→5.00(' + (pA[0] && pA[0].km) + ')');
-ok(pA[0] && pA[0].kcal === 320, 'K11 干卡→千卡 320(' + (pA[0] && pA[0].kcal) + ')');
-ok(pA[0] && pA[0].mins === 32, 'K12 时长 32 分钟(' + (pA[0] && pA[0].mins) + ')');
-
-const ocrC = '2026年11月21日 周六\n跑步\n8.06\n运动时长\n00:48:20\n消耗\n512 于飞';
-const pC = sandbox.parseKeepText(ocrC);
-ok(pC.length === 1 && pC[0].kcal === 512, 'K13 消耗兜底取数 512(' + (pC[0] && pC[0].kcal) + ')');
-ok(pC[0] && pC[0].km === 8.06, 'K14 距离 8.06(' + (pC[0] && pC[0].km) + ')');
-
-const ocrList = '2026年11月20日 周五\n跑步\n5.00公里\n00:32:15\n320千卡\n2026年11月19日 周四\n骑行\n12.50公里\n00:45:00\n280千卡';
-const pL = sandbox.parseKeepText(ocrList);
-ok(pL.length === 2, 'K15 一张图两条记录(' + pL.length + ')');
-ok(pL[1] && pL[1].name === '骑行' && pL[1].kcal === 280, 'K16 第二条 骑行 280');
-
-el('keep-text').value = ocrList;
-sandbox.doKeepImport();
-ok(DBd().days['2026-11-19'] && DBd().days['2026-11-19'].items.length === 1, 'K17 重复导入不重复加项目');
-ok(String(el('keep-note').textContent).indexOf('跳过') !== -1, 'K18 重复提示(' + el('keep-note').textContent + ')');
-
-ok(sandbox.fixOcr('05：30 干卡').indexOf('05:30 千卡') !== -1, 'K19 全角冒号+干卡纠错');
-
-// ---- 真实 OCR 输出回放(设 OCR_TEXT=文件 时) ----
-if (process.env.OCR_TEXT) {
-  const txt = fs.readFileSync(process.env.OCR_TEXT, 'utf8');
-  console.log('OCR-REAL ' + process.env.OCR_TEXT.split(/[\\/]/).pop() + ' => ' + JSON.stringify(sandbox.parseKeepText(txt)));
-}
-
-// ---- 布局回归(2026-11-22 饮食页横向溢出,把整页撑宽、底部四个 tab 被推出屏幕) ----
-const cssSrc = fs.readFileSync('css/style.css', 'utf8').replace(/\s+/g, ' ');
-function cssRule(sel) {
-  const i = cssSrc.indexOf(sel + '{');
-  if (i < 0) return '';
-  return cssSrc.slice(i + sel.length + 1, cssSrc.indexOf('}', i));
-}
-ok(/html,body\{height:100%;max-width:100%;overflow-x:hidden\}/.test(cssSrc), 'L1 全局禁止横向溢出');
-ok(cssRule('.add-row input').indexOf('min-width:0') !== -1, 'L2 食物名输入框可收缩(min-width:0)');
-ok(cssRule('.add-row .kcal-input').indexOf('min-width:0') !== -1, 'L3 卡路里输入框可收缩(min-width:0)');
-const tabRule = cssRule('.tabbar');
-ok(tabRule.indexOf('left:0') !== -1 && tabRule.indexOf('right:0') !== -1, 'L4 tabbar 用 left/right 撑满(不再 translateX)');
-ok(tabRule.indexOf('translateX(-50%)') === -1, 'L5 tabbar 无 translateX 残留在固定定位上');
-
-const swSrc = fs.readFileSync('sw.js', 'utf8');
-ok(/const CACHE = 'dailyfit-v5'/.test(swSrc), 'L6 SW 缓存版本已升到 v5(旧 CSS 能被换掉)');
-ok(swSrc.indexOf("req.mode === 'navigate'") !== -1, 'L7 SW 保留导航请求处理');
-ok(fs.readFileSync('index.html', 'utf8').indexOf('v1.3') !== -1, 'L8 页面版本号 = v1.3');
-
-// ---- 勾选确认保存(C 系列) ----
-fire(typeBtns[0], 'click');
-ok(!DBd().days[today].confirmed, 'C1 选类型后仍是未确认');
-ok(el('confirm-save').disabled === true, 'C2 未勾选时保存按钮不可点');
+/* ---- 确认保存 ---- */
+el('confirm-chk').checked = false;
+fire(el('confirm-chk'), 'change');
+ok(el('confirm-save').disabled === true, 'C21 未勾选时按钮禁用');
 el('confirm-chk').checked = true;
 fire(el('confirm-chk'), 'change');
-ok(el('confirm-save').disabled === false, 'C3 勾选后按钮可用');
+ok(el('confirm-save').disabled === false, 'C22 勾选后可点');
 fire(el('confirm-save'), 'click');
-ok(DBd().days[today].confirmed === true && !!DBd().days[today].confirmedAt, 'C4 确认后落盘 confirmed+时间');
-ok(el('confirm-save').textContent.indexOf('已保存') !== -1, 'C5 按钮变已保存');
-ok(el('confirm-state').textContent.indexOf('已确认') !== -1, 'C6 状态显示已确认(' + el('confirm-state').textContent + ')');
+ok(DBd().days[later].confirmed === true && !!DBd().days[later].confirmedAt, 'C23 确认保存写入 confirmed/时间');
+ok(el('confirm-save').textContent.indexOf('已保存') !== -1, 'C24 按钮变已保存');
 
-el('item-input').value = '拉伸'; fire(el('item-add'), 'click');
-ok(DBd().days[today].confirmed === false && DBd().days[today].dirty === true, 'C7 确认后又改数据→回到未确认');
-ok(el('confirm-state').textContent.indexOf('改动') !== -1, 'C8 提示需重新确认');
-el('confirm-chk').checked = true; fire(el('confirm-chk'), 'change');
-fire(el('confirm-save'), 'click');
-ok(DBd().days[today].confirmed === true && !DBd().days[today].dirty, 'C9 重新确认生效');
+fire(chips[1], 'click');
+ok(DBd().days[later].confirmed === false && DBd().days[later].dirty === true, 'C25 改动后打回待确认');
+ok(el('confirm-state').textContent.indexOf('改动') !== -1, 'C26 提示需重新确认');
 
-// 逐项勾选
-const itIdx = DBd().days[today].items.length - 1;
-fireT(el('item-list'), 'change', { closest: function(sel) {
-  return sel === '.item-done' ? { dataset: { i: String(itIdx) }, checked: true } : null; } });
-ok(DBd().days[today].items[itIdx].done === true, 'C10 项目可勾选完成');
-ok(DBd().days[today].confirmed === false, 'C11 勾选项目也算改动,需重新确认');
-
-// 休息日也能确认(不需要项目)
+/* ---- 休息日 ---- */
 fire(typeBtns[2], 'click');
-el('confirm-chk').checked = true; fire(el('confirm-chk'), 'change');
+ok(DBd().days[later].type === 'rest', 'C27 休息日入库');
+ok(el('rest-tip').hidden === false, 'C28 休息日显示提示');
+ok(el('items-card').style.display === 'none', 'C29 休息日隐藏项目卡');
+
+/* ---- 喝水(永远今天) ---- */
+fireT(el('cal-grid'), 'click', calDayTarget(other));   /* 故意把选中日切走 */
+const before = ((DBd().days[today] || {}).cups) || 0;
+fire(el('cup-plus'), 'click');
+ok(((DBd().days[today] || {}).cups) === before + 1, 'C30 记一杯记到今天(与选中日无关)');
+fire(el('cup-minus'), 'click');
+ok(((DBd().days[today] || {}).cups) === before, 'C31 撤销一杯');
+el('custom-ml').value = '125';
+fire(el('custom-add'), 'click');
+ok(Math.abs(DBd().days[today].cups - (before + 0.5)) < 0.001, 'C32 自定义 125ml = +0.5 杯');
+el('set-cup').value = '300'; fire(el('set-cup'), 'change');
+el('set-goal').value = '6'; fire(el('set-goal'), 'change');
+ok(DBd().profile.cupMl === 300 && DBd().profile.cupsGoal === 6, 'C33 水杯设置生效');
+ok(el('set-note').textContent.indexOf('1800') !== -1, 'C34 目标总量文案=6×300');
+
+/* ---- BMI ---- */
+el('bmi-h').value = '170'; el('bmi-w').value = '65';
+fire(el('bmi-save'), 'click');
+ok(DBd().profile.heightCm === 170 && DBd().profile.weightKg === 65, 'C35 身高体重入库');
+ok(/22\.5/.test(el('bmi-num').textContent), 'C36 BMI=22.5');
+ok(el('bmi-tag').textContent === '正常', 'C37 分级=正常');
+ok(DBd().profile.weightLog.length === 1, 'C38 体重历史 1 条');
+
+/* ---- 路由 ---- */
+fire(tabs[1], 'click');
+ok(location.hash === '#water', 'C39 切到喝水 hash');
+fire(tabs[2], 'click');
+ok(location.hash === '#me', 'C40 切到我的 hash');
+
+/* ---- 数据完整性 ---- */
+const dump = DBd();
+ok(!!dump.days[today] && !!dump.days[other] && !!dump.days[later], 'C41 多天数据并存');
+ok(Object.keys(dump.days).length >= 3, 'C42 天数≥3');
+
+/* ---- 未来日期 ---- */
+const future = keyOf(new Date(now.getFullYear(), now.getMonth(), Math.min(28, now.getDate() + 3)));
+if (future > today) {
+  fireT(el('cal-grid'), 'click', calDayTarget(future));
+  ok(el('day-tag').textContent === '未来日期', 'C43 未来日期有提示(' + el('day-tag').textContent + ')');
+} else {
+  ok(true, 'C43 未来日期(本月已到月底,跳过)');
+}
+
+/* ---- 静态回归 ---- */
+const css = fs.readFileSync('css/style.css', 'utf8');
+const html = fs.readFileSync('index.html', 'utf8');
+const sw = fs.readFileSync('sw.js', 'utf8');
+ok(css.indexOf('overflow-x:hidden') !== -1 && css.indexOf('min-width:0') !== -1, 'C44 横向溢出防护仍在');
+ok(css.indexOf('left:0;right:0') !== -1, 'C45 tabbar 用 left/right 定位');
+ok(html.indexOf('page-diet') === -1 && html.indexOf('饮食') === -1, 'C46 饮食页已删除');
+ok(html.indexOf('Keep') === -1 && html.indexOf('keep-') === -1, 'C47 Keep 相关已删除');
+ok(html.indexOf('cal-grid') !== -1 && html.indexOf('data-page="water"') !== -1, 'C48 三 Tab + 日历结构');
+ok(/dailyfit-v6/.test(sw), 'C49 SW 缓存版本 v6');
+ok(html.indexOf('v1.4') !== -1, 'C50 版本号 v1.4');
+
+
+/* ---- 新增行为:切月选中 / 连续天数 / 改动重置勾选 / 滑动抑制 / 喝水文案 ---- */
+/* 切到上个月:选中日应变成该月 1 号 */
+fire(el('cal-prev'), 'click');
+const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+const expectSel = (prevMonth.getMonth() + 1) + '月1日';
+ok(el('day-title').textContent.indexOf(expectSel) === 0, 'C51 切月后自动选中该月 1 号(' + el('day-title').textContent + ')');
+
+/* 切回本月:选中日回到今天 */
+fire(el('cal-today'), 'click');
+ok(el('day-title').textContent.indexOf((now.getMonth() + 1) + '月' + now.getDate() + '日') === 0, 'C52 回到今天');
+
+/* 连续天数:昨天也练了 → 今天+昨天 = 2 */
+const yDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+const yk = keyOf(yDate);
+fireT(el('cal-grid'), 'click', calDayTarget(yk));
+fire(typeBtns[0], 'click');
+fire(el('cal-today'), 'click');
+ok(el('cal-streak').textContent === '连续 1 天', 'C53 今天还没记时连续天数从昨天算(' + el('cal-streak').textContent + ')');
+
+/* 改动后确认勾选被重置 */
+fireT(el('cal-grid'), 'click', calDayTarget(today));
+fire(typeBtns[0], 'click');               /* 记今天有氧 */
+el('confirm-chk').checked = true;
+fire(el('confirm-chk'), 'change');
 fire(el('confirm-save'), 'click');
-ok(DBd().days[today].confirmed === true, 'C12 休息日可直接确认');
+ok(DBd().days[today].confirmed === true, 'C54 今天可确认');
+fire(chips[2], 'click');                  /* 加个项目 → 打回未确认 */
+ok(el('confirm-chk').checked === false, 'C55 改动后勾选框被重置');
+ok(el('confirm-save').disabled === true, 'C56 改动后必须重新勾选');
 
-// ---- 全部历史(H 系列) ----
-const allDays = Object.keys(DBd().days).filter(function(k) {
-  const d = DBd().days[k]; return !!(d.type || (d.items && d.items.length)); });
-const histHtml = el('hist-list').innerHTML;
-ok(allDays.length >= 4, 'H1 测试数据含多天记录(' + allDays.length + ')');
-ok(String(el('hist-count').textContent).indexOf(String(allDays.length)) === 0, 'H2 计数=' + allDays.length + ' 天(' + el('hist-count').textContent + ')');
-ok((histHtml.match(/hist-row/g) || []).length === allDays.length, 'H3 历史行数=记录天数');
-ok(histHtml.indexOf('年') !== -1 && histHtml.indexOf('hist-month') !== -1, 'H4 按月分组显示');
-ok(histHtml.indexOf('已确认') !== -1 && histHtml.indexOf('待确认') !== -1, 'H5 同时显示已确认/待确认');
-ok(histHtml.indexOf('这') === -1 || true, 'H6 历史行可点击(见 H7)');
+/* 滑动翻月:触发 touch 事件,且紧随的点击被吃掉 */
+const monthBefore = el('cal-month').textContent;
+const beforeSel = el('day-title').textContent;
+function touchEv(x, y, key) {
+  const ev = { touches: [{ clientX: x, clientY: y }], changedTouches: [{ clientX: x, clientY: y }] };
+  (el('cal-card')._listeners[key] || []).forEach(function(fn) { fn(ev); });
+}
+touchEv(300, 200, 'touchstart');
+touchEv(120, 205, 'touchend');            /* 向左滑 → 下个月 */
+ok(el('cal-month').textContent !== monthBefore, 'C57 左滑切到下个月');
+fireT(el('cal-grid'), 'click', calDayTarget(keyOf(new Date(now.getFullYear(), now.getMonth() + 1, 5))));
+ok(el('day-title').textContent === beforeSel || el('day-title').textContent.indexOf('月1日') > 0, 'C58 滑动后紧接的点击被忽略');
 
-// 点历史行跳转到那一天
-const otherKey = allDays.filter(function(k){ return k !== today; }).sort()[0];
-fireT(el('hist-list'), 'click', { closest: function(sel) {
-  return sel === '.hist-row' ? { dataset: { k: otherKey } } : null; } });
-ok(el('date-title').textContent.indexOf(String(Number(otherKey.slice(8, 10)))) !== -1, 'H7 点历史行跳到该日(' + el('date-title').textContent + ')');
-fire(el('back-today'), 'click');
+/* 喝水文案 */
+ok(el('water-date').textContent.indexOf('今天') === 0, 'C59 喝水页标注「今天」(' + el('water-date').textContent + ')');
+
+/* 导出结构自检 */
+const dump2 = DBd();
+ok(typeof dump2.days === 'object' && typeof dump2.profile === 'object' && Array.isArray(dump2.profile.weightLog), 'C60 数据结构完整');
 
 if (fails.length) { console.log('SMOKE FAILED:', fails.join('; ')); process.exit(1); }
-console.log('SMOKE ALL PASS (' + nChecks + ' checks)');
+console.log('SMOKE ALL PASS (' + n + ' checks)');

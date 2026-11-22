@@ -5,3 +5,7 @@ verify/
 *.apk
 *.keystore
 _android_build/
+
+# Pages 上的安装包直链(便于手机直接下载,不要忽略)
+!download/*.apk
+build_android/

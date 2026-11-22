@@ -1,7 +1,7 @@
 {
   "name": "每日 Fit · 锻炼打卡",
   "short_name": "每日Fit",
-  "description": "记录每天的有氧/无氧/休息日锻炼、自定义项目、喝水量和 BMI",
+  "description": "记录每天的有氧/无氧/休息日与自定义锻炼项目,日历回看,外加喝水与 BMI",
   "lang": "zh-CN",
   "start_url": "./index.html",
   "scope": "./",

@@ -4,11 +4,7 @@
 /* ---------- 存储 ---------- */
 const KEY = 'fitlog_v1';
 function blank() {
-  return {
-    profile: { heightCm: null, weightKg: null, cupMl: 250, cupsGoal: 5, kcalGoal: 1800, weightLog: [] },
-    foods: [],
-    days: {}
-  };
+  return { profile: { heightCm: null, weightKg: null, cupMl: 250, cupsGoal: 5, weightLog: [] }, days: {} };
 }
 function load() {
   try {
@@ -17,8 +13,7 @@ function load() {
     const d = JSON.parse(raw);
     if (!d.profile) d.profile = blank().profile;
     if (!d.days) d.days = {};
-    if (!Array.isArray(d.foods)) d.foods = [];
-    if (d.profile.kcalGoal == null) d.profile.kcalGoal = 1800;
+    if (!Array.isArray(d.profile.weightLog)) d.profile.weightLog = [];
     return d;
   } catch (e) { return blank(); }
 }
@@ -26,79 +21,118 @@ let DB = load();
 function save() { localStorage.setItem(KEY, JSON.stringify(DB)); }
 
 /* ---------- 日期工具 ---------- */
+const WD = ['日', '一', '二', '三', '四', '五', '六'];
 function keyOf(d) {
   const p = n => String(n).padStart(2, '0');
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
 }
-function fromKey(k) { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); }
+function fromKey(k) { const a = k.split('-').map(Number); return new Date(a[0], a[1] - 1, a[2]); }
 function d2(offset) { const t = new Date(); t.setDate(t.getDate() + offset); return t; }
-function fmtTitle(d) {
-  const wd = ['日', '一', '二', '三', '四', '五', '六'];
-  return (d.getMonth() + 1) + '月' + d.getDate() + '日 · 周' + wd[d.getDay()];
+function fmtFull(d) {
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日 · 周' + WD[d.getDay()];
 }
 const TODAY = () => keyOf(new Date());
 
 /* ---------- 视图状态 ---------- */
-let viewDate = TODAY();
-let page = 'workout';
-let curMeal = '早餐';
+let viewDate = TODAY();          /* 当前选中的日期 */
+let calY = 0, calM = 0;          /* 日历显示的年 / 月(0-11) */
+(function initCal() { const d = fromKey(viewDate); calY = d.getFullYear(); calM = d.getMonth(); })();
+
 const isWorkout = t => t === 'cardio' || t === 'strength';
+const typeName = t => t === 'cardio' ? '有氧' : t === 'strength' ? '无氧' : t === 'rest' ? '休息' : '未记录';
 
 /* ---------- 工具 ---------- */
 function $(id) { return document.getElementById(id); }
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-function shake(el) { el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 350); }
-function trimNum(n) { return String(n).replace(/\.?0+$/, ''); }
+function shake(el) { if (!el) return; el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 350); }
+function ensureDay(k) {
+  return DB.days[k] || (DB.days[k] = { items: [], cups: 0, cupTimes: [] });
+}
+function dayHasLog(d) { return !!(d && (d.type || (d.items && d.items.length))); }
 
-/* ---------- 内置食物库(每份估算) ---------- */
-const FOOD_DB = [
-  { name: '香蕉', kcal: 105, unit: '1 根' },
-  { name: '苹果', kcal: 95, unit: '1 个' },
-  { name: '米饭', kcal: 174, unit: '1 碗' },
-  { name: '面条', kcal: 280, unit: '1 碗' },
-  { name: '馒头', kcal: 220, unit: '1 个' },
-  { name: '包子', kcal: 200, unit: '1 个' },
-  { name: '鸡腿', kcal: 181, unit: '1 个' },
-  { name: '鸡胸肉', kcal: 165, unit: '100g' },
-  { name: '牛肉', kcal: 150, unit: '100g' },
-  { name: '猪肉', kcal: 330, unit: '100g' },
-  { name: '鱼', kcal: 120, unit: '100g' },
-  { name: '鸡蛋', kcal: 78, unit: '1 个' },
-  { name: '豆腐', kcal: 80, unit: '100g' },
-  { name: '青菜', kcal: 25, unit: '100g' },
-  { name: '牛奶', kcal: 155, unit: '250ml' },
-  { name: '酸奶', kcal: 130, unit: '1 杯' },
-  { name: '豆浆', kcal: 80, unit: '250ml' },
-  { name: '燕麦', kcal: 150, unit: '40g' },
-  { name: '全麦面包', kcal: 80, unit: '1 片' },
-  { name: '玉米', kcal: 110, unit: '1 根' },
-  { name: '红薯', kcal: 130, unit: '1 个' },
-  { name: '坚果', kcal: 170, unit: '30g' },
-  { name: '可乐', kcal: 140, unit: '330ml' },
-  { name: '薯片', kcal: 270, unit: '50g' }
-];
+/* 任何改动都把"已确认"打回未确认,避免悄悄改掉已核对的数据 */
+function touch(day) {
+  if (!day) return;
+  if (day.confirmed) { day.confirmed = false; day.dirty = true; }
+  confirmKey = null;   /* 让确认勾选框回到未勾选,必须重新核对 */
+}
 
-/* ---------- 渲染: 锻炼页 ---------- */
-function renderWorkout() {
+/* ---------- 渲染: 日历 ---------- */
+function renderCalendar() {
+  $('cal-month').textContent = calY + '年' + (calM + 1) + '月';
+
+  const first = new Date(calY, calM, 1);
+  const lead = (first.getDay() + 6) % 7;               /* 周一作为一周开头 */
+  const daysInMonth = new Date(calY, calM + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push('<span class="cal-day blank"></span>');
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const k = keyOf(new Date(calY, calM, d));
+    const rec = DB.days[k] || {};
+    const cls = ['cal-day'];
+    if (rec.type) cls.push('t-' + rec.type);
+    if (k === viewDate) cls.push('sel');
+    if (k === TODAY()) cls.push('today');
+    if (rec.confirmed) cls.push('ok');
+    if (dayHasLog(rec)) cls.push('has');
+    const mark = rec.confirmed ? '<i class="cal-ok">✓</i>' : '';
+    cells.push('<button class="' + cls.join(' ') + '" data-k="' + k + '">' +
+      '<span class="cal-num">' + d + '</span>' + mark + '</button>');
+  }
+  const tail = (7 - ((lead + daysInMonth) % 7)) % 7;
+  for (let i = 0; i < tail; i++) cells.push('<span class="cal-day blank"></span>');
+  $('cal-grid').innerHTML = cells.join('');
+
+  /* 连续打卡(从今天往前,只算 有氧/无氧) */
+  let streak = 0;
+  const startedToday = isWorkout((DB.days[TODAY()] || {}).type);
+  for (let i = (startedToday ? 0 : 1); i < 3650; i++) {
+    const a = DB.days[keyOf(d2(-i))];
+    if (a && isWorkout(a.type)) streak++; else break;
+  }
+  $('cal-streak').textContent = '连续 ' + streak + ' 天';
+
+  /* 本月有记录天数 */
+  let cnt = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (dayHasLog(DB.days[keyOf(new Date(calY, calM, d))])) cnt++;
+  }
+  $('cal-month-count').textContent = '本月 ' + cnt + ' 天';
+
+  $('cal-today').hidden = (viewDate === TODAY() && calY === new Date().getFullYear() && calM === new Date().getMonth());
+}
+
+/* ---------- 渲染: 选中日详情 ---------- */
+function renderDay() {
   const d = fromKey(viewDate);
-  $('date-title').textContent = fmtTitle(d);
-  $('back-today').hidden = (viewDate === TODAY());
+  const rel = viewDate === TODAY() ? '今天' : (viewDate === keyOf(d2(1)) ? '明天' : (viewDate === keyOf(d2(-1)) ? '昨天' : ''));
+  $('day-title').textContent = fmtFull(d) + (rel ? ' · ' + rel : '');
 
   const day = DB.days[viewDate] || {};
   const type = day.type || null;
+  const tag = $('day-tag');
+  let tagText = '未记录', tagCls = 'day-bar-tag';
+  if (day.confirmed) { tagText = '已确认'; tagCls += ' ok'; }
+  else if (dayHasLog(day)) { tagText = '待确认'; tagCls += ' pending'; }
+  else if (viewDate > TODAY()) { tagText = '未来日期'; tagCls += ' future'; }
+  if (type) tagText = typeName(type) + (day.confirmed ? ' · 已确认' : '');
+  tag.textContent = tagText;
+  tag.className = tagCls + (type ? ' t-' + type : '');
+
   document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('on', b.dataset.type === type));
   $('rest-tip').hidden = type !== 'rest';
   $('items-card').style.display = type === 'rest' ? 'none' : '';
 
   const ul = $('item-list');
-  const items = day.items || [];
+  const items = Array.isArray(day.items) ? day.items : [];
   if (!items.length) {
-    ul.innerHTML = '<div class="empty-tip">还没有项目,从上面添加吧 ✏️</div>';
+    ul.innerHTML = '<div class="empty-tip">这天还没有项目</div>';
   } else {
     ul.innerHTML = items.map((it, i) =>
-      '<li class="' + (it.done ? 'done' : '') + '" data-i="' + i + '">' +
+      '<li class="' + (it.done ? 'done' : '') + '">' +
       '<label class="item-chk"><input type="checkbox" class="item-done" data-i="' + i + '"' + (it.done ? ' checked' : '') + '><span class="item-dot"></span></label>' +
       '<span class="item-name">' + esc(it.name) + '</span>' +
       '<input class="item-detail" data-i="' + i + '" placeholder="详情,如:深蹲 4×12" value="' + esc(it.detail || '') + '" maxlength="40">' +
@@ -106,47 +140,34 @@ function renderWorkout() {
     ).join('');
   }
 
-  let streak = 0;
-  for (let i = 0; ; i++) {
-    const a = DB.days[keyOf(d2(-i))];
-    if (a && isWorkout(a.type)) streak++; else break;
-    if (i > 3650) break;
+  /* 沿用上次: 当前没项目,且之前某天有项目 */
+  const last = prevDayWithItems(viewDate);
+  const cp = $('copy-last');
+  if (!items.length && last) {
+    cp.hidden = false;
+    cp.textContent = '沿用 ' + last.short + ' 的项目';
+  } else {
+    cp.hidden = true;
   }
-  $('streak-num').textContent = streak;
-
-  let wk = 0;
-  const strip = [];
-  for (let i = 6; i >= 0; i--) {
-    const k = keyOf(d2(-i));
-    const a = DB.days[k];
-    const t = a && a.type;
-    if (isWorkout(t)) wk++;
-    const lab = i === 0 ? '今天' : '周' + ['日', '一', '二', '三', '四', '五', '六'][d2(-i).getDay()];
-    const chip = !t ? '空' : (t === 'cardio' ? '有' : t === 'strength' ? '无' : '休');
-    const cls = 'wday' + (t ? ' hit-' + t : '') + (i === 0 && !t ? ' today-out' : '');
-    strip.push('<div class="' + cls + '"><div class="w-lab">' + lab + '</div><div class="w-chip">' + chip + '</div></div>');
-  }
-  $('week-num').textContent = wk;
-  $('week-strip').innerHTML = strip.join('');
 
   renderConfirm(day, type);
-  renderHistory();
+}
+
+function prevDayWithItems(k) {
+  const keys = Object.keys(DB.days).filter(x => x < k && Array.isArray(DB.days[x].items) && DB.days[x].items.length).sort();
+  if (!keys.length) return null;
+  const kk = keys[keys.length - 1];
+  const d = fromKey(kk);
+  return { key: kk, short: (d.getMonth() + 1) + '/' + d.getDate() };
 }
 
 /* ---------- 确认保存 ---------- */
-/* 任何改动都把"已确认"打回未确认,避免悄悄改掉已核对的数据 */
-function touch(day) {
-  if (!day) return;
-  if (day.confirmed) { day.confirmed = false; day.dirty = true; }
-}
-
-let confirmKey = null;   /* 当前渲染的日期,用于切换日期时重置勾选框 */
+let confirmKey = null;
 
 function renderConfirm(day, type) {
   const chk = $('confirm-chk'), btn = $('confirm-save'), st = $('confirm-state');
   if (!chk || !btn || !st) return;
   const ok = !!day.confirmed;
-  /* 切到别的日期时重置勾选;同一天内保留用户的勾选状态 */
   if (ok) chk.checked = true;
   else if (confirmKey !== viewDate) chk.checked = false;
   confirmKey = viewDate;
@@ -172,61 +193,21 @@ function nowStamp() {
 }
 
 function confirmSave() {
-  const day = DB.days[viewDate] || (DB.days[viewDate] = { items: [], cups: 0, cupTimes: [] });
-  if (!day.type) { shake($('confirm-card')); render(); return; }
+  const day = ensureDay(viewDate);
+  if (!day.type) { shake($('confirm-card')); return; }
   if (!$('confirm-chk').checked) { shake($('confirm-card')); return; }
   day.confirmed = true;
   day.dirty = false;
   day.confirmedAt = nowStamp();
-  save(); render();
+  save();
+  renderAll();
 }
 
-/* ---------- 全部记录 ---------- */
-function dayHasLog(d) {
-  if (!d) return false;
-  return !!(d.type || (d.items && d.items.length));
-}
-
-function renderHistory() {
-  const box = $('hist-list');
-  if (!box) return;
-  const keys = Object.keys(DB.days).filter(k => dayHasLog(DB.days[k])).sort().reverse();
-  const cnt = $('hist-count');
-  if (cnt) cnt.textContent = keys.length + ' 天';
-  if (!keys.length) {
-    box.innerHTML = '<div class="empty-tip">还没有记录,从今天开始吧 ✨</div>';
-    return;
-  }
-  const wd = ['日', '一', '二', '三', '四', '五', '六'];
-  const out = [];
-  let curM = '';
-  keys.forEach(k => {
-    const d = DB.days[k], dt = fromKey(k);
-    const m = k.slice(0, 7);
-    if (m !== curM) {
-      curM = m;
-      out.push('<div class="hist-month">' + dt.getFullYear() + ' 年 ' + (dt.getMonth() + 1) + ' 月</div>');
-    }
-    const tName = d.type === 'cardio' ? '有氧' : d.type === 'strength' ? '无氧' : d.type === 'rest' ? '休息' : '未选';
-    const names = (d.items || []).map(it => it.name + (it.done ? '✓' : '')).join(' · ');
-    const meta = [];
-    if (names) meta.push(names);
-    if (d.foods && d.foods.length) meta.push('饮食 ' + d.foods.length + ' 项');
-    if (d.cups) meta.push('水 ' + d.cups + ' 杯');
-    out.push('<button class="hist-row' + (k === viewDate ? ' cur' : '') + '" data-k="' + k + '">' +
-      '<span class="hist-date">' + (dt.getMonth() + 1) + '/' + dt.getDate() + ' 周' + wd[dt.getDay()] + '</span>' +
-      '<span class="hist-type t-' + (d.type || 'none') + '">' + tName + '</span>' +
-      '<span class="hist-badge' + (d.confirmed ? ' on' : '') + '">' + (d.confirmed ? '已确认' : '待确认') + '</span>' +
-      '<span class="hist-meta">' + esc(meta.join(' · ')) + '</span>' +
-      '</button>');
-  });
-  box.innerHTML = out.join('');
-}
-
-/* ---------- 渲染: 喝水页 ---------- */
+/* ---------- 渲染: 喝水页(永远针对今天) ---------- */
 function renderWater() {
   const p = DB.profile;
-  const day = DB.days[viewDate] || {};
+  const tk = TODAY();
+  const day = DB.days[tk] || {};
   const cups = day.cups || 0;
   const g = Math.max(1, p.cupsGoal || 5);
 
@@ -238,6 +219,9 @@ function renderWater() {
   $('ring-cups').textContent = cups;
   $('ring-goal').textContent = g;
   $('ring-ml').textContent = Math.round(cups * (p.cupMl || 250)) + ' ml';
+
+  const td = new Date();
+  $('water-date').textContent = '今天 · ' + (td.getMonth() + 1) + '月' + td.getDate() + '日 周' + WD[td.getDay()] + '(喝水记录只记今天)';
 
   $('set-cup').value = p.cupMl || 250;
   $('set-goal').value = g;
@@ -255,87 +239,12 @@ function renderWater() {
   $('water-bar-x').innerHTML = xs.join('');
 }
 
-/* ---------- 渲染: 饮食页 ---------- */
-function dayKcal(day) {
-  const foods = (day && Array.isArray(day.foods)) ? day.foods : [];
-  let t = 0;
-  foods.forEach(f => { t += (Number(f.kcal) || 0) * (Number(f.qty) || 1); });
-  return Math.round(t);
-}
-function renderDiet() {
-  $('diet-date').textContent = fmtTitle(fromKey(viewDate));
-  $('diet-today').hidden = (viewDate === TODAY());
-
-  const day = DB.days[viewDate] || {};
-  const foods = Array.isArray(day.foods) ? day.foods : [];
-  const goal = Math.max(800, DB.profile.kcalGoal || 1800);
-  const total = dayKcal(day);
-
-  $('diet-total').textContent = total;
-  $('diet-goal').textContent = goal;
-  const pct = Math.min(total / goal, 1) * 100;
-  const bar = $('diet-bar');
-  bar.style.width = pct.toFixed(1) + '%';
-  bar.style.background = total > goal ? 'var(--orange)' : 'var(--green)';
-
-  const left = goal - total;
-  const lf = $('diet-left');
-  lf.textContent = left >= 0 ? '还可摄入 ' + left + ' kcal' : '已超出 ' + (-left) + ' kcal';
-  lf.className = 'diet-left' + (left < 0 ? ' over' : '');
-  $('set-kcal').value = goal;
-
-  const burn = Math.round(Number(day.kcalBurn) || 0);
-  const burnEl = $('diet-burn');
-  if (burn > 0) {
-    burnEl.hidden = false;
-    burnEl.textContent = '运动消耗 -' + burn + ' kcal · 净摄入 ' + (total - burn) + ' kcal';
-  } else {
-    burnEl.hidden = true;
-  }
-
-  const ul = $('diet-list');
-  if (!foods.length) {
-    ul.innerHTML = '<div class="empty-tip">今天还没记录,从下面添加吧 🍚</div>';
-  } else {
-    ul.innerHTML = foods.map((f, i) => {
-      const q = Number(f.qty) || 1;
-      const k = Math.round((Number(f.kcal) || 0) * q);
-      return '<li><span class="meal-tag">' + esc(f.meal || '') + '</span>' +
-        '<span class="fd-name">' + esc(f.name) + '</span>' +
-        '<button class="qty-btn" data-act="minus" data-i="' + i + '" aria-label="减少">−</button>' +
-        '<span class="fd-qty">×' + trimNum(q) + '</span>' +
-        '<button class="qty-btn" data-act="plus" data-i="' + i + '" aria-label="增加">+</button>' +
-        '<span class="fd-kcal">' + k + ' kcal</span>' +
-        '<button class="item-del" data-act="del" data-i="' + i + '" aria-label="删除">✕</button></li>';
-    }).join('');
-  }
-
-  const custom = (DB.foods || []).filter(c => !FOOD_DB.some(b => b.name === c.name));
-  const chips = FOOD_DB.concat(custom);
-  $('food-quick').innerHTML = chips.map(f =>
-    '<button class="chip" data-name="' + esc(f.name) + '" data-kcal="' + (Number(f.kcal) || 0) + '">' +
-    esc(f.name) + ' ' + (Number(f.kcal) || 0) + '</button>'
-  ).join('');
-
-  const bars = [], xs = [];
-  let maxK = goal;
-  for (let i = 6; i >= 0; i--) maxK = Math.max(maxK, dayKcal(DB.days[keyOf(d2(-i))]));
-  for (let i = 6; i >= 0; i--) {
-    const v = dayKcal(DB.days[keyOf(d2(-i))]);
-    const h = maxK ? Math.min(v / maxK * 100, 100) : 0;
-    bars.push('<div class="bar-col"><div class="bar kcal" style="height:' + h + '%"></div></div>');
-    xs.push('<span>' + (i === 0 ? '今天' : (d2(-i).getMonth() + 1) + '/' + d2(-i).getDate()) + '</span>');
-  }
-  $('diet-bars').innerHTML = bars.join('');
-  $('diet-bar-x').innerHTML = xs.join('');
-}
-
-/* ---------- 渲染: 我的页 ---------- */
+/* ---------- 渲染: 我的 ---------- */
 function bmiLevel(b) {
-  if (b < 18.5) return { n: 1, name: '偏瘦', color: '#3b82f6', bg: '#eff6ff', min: 14, max: 18.5 };
-  if (b < 24) return { n: 2, name: '正常', color: '#16a34a', bg: '#f0fdf4', min: 18.5, max: 24 };
-  if (b < 28) return { n: 3, name: '超重', color: '#d97706', bg: '#fffbeb', min: 24, max: 28 };
-  return { n: 4, name: '肥胖', color: '#dc2626', bg: '#fef2f2', min: 28, max: 35 };
+  if (b < 18.5) return { name: '偏瘦', color: '#3b82f6', bg: '#eff6ff', min: 14, max: 18.5 };
+  if (b < 24) return { name: '正常', color: '#16a34a', bg: '#f0fdf4', min: 18.5, max: 24 };
+  if (b < 28) return { name: '超重', color: '#d97706', bg: '#fffbeb', min: 24, max: 28 };
+  return { name: '肥胖', color: '#dc2626', bg: '#fef2f2', min: 28, max: 35 };
 }
 function renderMe() {
   const p = DB.profile;
@@ -372,19 +281,19 @@ function showBmi(hCm, wKg, record) {
   }
 }
 
-/* ---------- 渲染总入口 ---------- */
-function render() {
-  renderWorkout();
+/* ---------- 渲染入口 ---------- */
+function renderAll() {
+  renderCalendar();
+  renderDay();
   renderWater();
-  renderDiet();
   renderMe();
 }
+const render = renderAll;
 
-/* ---------- Tab 切换(带 hash 路由,支持浏览器返回键) ---------- */
-const PAGES = ['workout', 'water', 'diet', 'me'];
+/* ---------- Tab 切换(hash 路由) ---------- */
+const PAGES = ['workout', 'water', 'me'];
 function goPage(p) {
   if (!PAGES.includes(p)) p = 'workout';
-  page = p;
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.page === p));
   document.querySelectorAll('.page').forEach(x => x.classList.toggle('active', x.id === 'page-' + p));
   if (location.hash !== '#' + p) history.replaceState(null, '', '#' + p);
@@ -393,338 +302,127 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
 window.addEventListener('hashchange', () => goPage(location.hash.slice(1)));
 goPage(location.hash.slice(1) || 'workout');
 
-/* ---------- Keep 文本解析(粘贴文字 / 截图 OCR 均可) ---------- */
-const KEEP_ACT = [
-  { re: /跑步|慢跑|晨跑|夜跑|户外跑|越野跑/, name: '跑步', met: 9.8 },
-  { re: /骑行|单车|公路车|动感单车/, name: '骑行', met: 7.5 },
-  { re: /游泳|自由泳|蛙泳/, name: '游泳', met: 8.0 },
-  { re: /跳绳/, name: '跳绳', met: 12.3 },
-  { re: /健走|快走|散步|走路|徒步/, name: '快走', met: 4.5 },
-  { re: /椭圆/, name: '椭圆机', met: 5.0 },
-  { re: /划船/, name: '划船机', met: 7.0 },
-  { re: /爬楼|登山|爬坡/, name: '爬楼登山', met: 7.0 },
-  { re: /跳操|健身操|有氧操|HIIT|hiit|Tabata|tabata/, name: '跳操', met: 7.0 },
-  { re: /瑜伽|拉伸|普拉提/, name: '瑜伽', met: 3.0 },
-  { re: /力量|器械|哑铃|深蹲|卧推|训练/, name: '力量训练', met: 5.0 }
-];
-
-function pad2(n) { const s = String(n); return s.length < 2 ? '0' + s : s; }
-
-/* OCR 纠错:全角转半角、"干卡/于卡"→千卡、数字里的 O/o→0、I/l→1、S/D→5 */
-function fixOcr(t) {
-  let s = String(t == null ? '' : t);
-  s = s.replace(/[\uFF01-\uFF5E]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
-  s = s.replace(/\u3000/g, ' ');
-  s = s.replace(/干卡|于卡|午卡/g, '千卡');
-  s = s.replace(/[0-9OoIlSsDd|]{1,}\s*[.,:]\s*[0-9OoIlSsDd|]{1,3}/g, function (n) {
-    return n.replace(/O/g, '0').replace(/o/g, '0').replace(/[Il|]/g, '1').replace(/[SD]/g, '5').replace(/d/g, '5');
-  });
-  s = s.replace(/[ \t]+/g, ' ');
-  return s;
+/* ---------- 日历事件 ---------- */
+function shiftMonth(delta) {
+  let y = calY, m = calM + delta;
+  if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+  calY = y; calM = m;
+  /* 切到别的月份时,选中日也跟着进入该月:本月→今天,其它月→1 号,避免"日历是 10 月、下面却在编辑 11 月" */
+  const nowD = new Date();
+  const inThisMonth = (y === nowD.getFullYear() && m === nowD.getMonth());
+  viewDate = inThisMonth ? TODAY() : keyOf(new Date(y, m, 1));
+  renderAll();
 }
+let lastSwipeAt = 0;   /* 刚滑动翻月的时间戳,用来吃掉紧随其后的误触点击 */
 
-const KEEP_DATE_RE = /(\d{4})\s*[-\/年.]\s*(\d{1,2})\s*[-\/月.]\s*(\d{1,2})|(\d{1,2})\s*月\s*(\d{1,2})\s*日?/g;
-
-function keepDate(m) {
-  if (m[1]) {
-    const y = parseInt(m[1], 10), mo = parseInt(m[2], 10), dd = parseInt(m[3], 10);
-    if (mo < 1 || mo > 12 || dd < 1 || dd > 31) return null;
-    return y + '-' + pad2(mo) + '-' + pad2(dd);
-  }
-  const mo = parseInt(m[4], 10), dd = parseInt(m[5], 10);
-  if (mo < 1 || mo > 12 || dd < 1 || dd > 31) return null;
-  const now = new Date();
-  let y = now.getFullYear();
-  const cand = new Date(y, mo - 1, dd);
-  if (cand.getTime() - now.getTime() > 40 * 86400000) y = y - 1;
-  return y + '-' + pad2(mo) + '-' + pad2(dd);
+function pickDate(k) {
+  viewDate = k;
+  const d = fromKey(k);
+  calY = d.getFullYear(); calM = d.getMonth();
+  renderAll();
+  window.scrollTo({ top: 0 });
 }
+function goToday() { pickDate(TODAY()); }
 
-function parseKeepBlock(date, text) {
-  const act = KEEP_ACT.find(function (a) { return a.re.test(text); });
-  if (!act) return null;
-  let km = null, secs = 0, kcal = null, m;
-  m = text.match(/(\d+(?:\.\d+)?)\s*(?:公里|千米|km|KM|Km)/);
-  if (m) km = parseFloat(m[1]);
-  if (!km) {
-    /* 单位字被 OCR 认错(如「公里」→「和」)时,按「距离型运动 + 带小数点的数字」兜底 */
-    const distActs = { '跑步': 1, '骑行': 1, '游泳': 1, '跳绳': 1, '快走': 1, '椭圆机': 1, '划船机': 1, '爬楼登山': 1 };
-    if (distActs[act.name]) {
-      const dm = text.match(/(?:^|[^\d.])(\d{1,3}\.\d{1,2})(?![\d])/);
-      if (dm) {
-        const v = parseFloat(dm[1]);
-        if (v > 0 && v < 100) km = v;
-      }
-    }
-  }
-  m = text.match(/(\d{1,2})\s*:\s*(\d{2})\s*:\s*(\d{2})/);
-  if (m) secs = parseInt(m[1], 10) * 3600 + parseInt(m[2], 10) * 60 + parseInt(m[3], 10);
-  if (!secs) {
-    m = text.match(/(\d{1,2})\s*:\s*(\d{2})/);
-    if (m) secs = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-  }
-  if (!secs) {
-    m = text.match(/(\d+(?:\.\d+)?)\s*(?:分钟|分|min)/i);
-    if (m) secs = Math.round(parseFloat(m[1]) * 60);
-  }
-  if (!secs) {
-    m = text.match(/(\d+(?:\.\d+)?)\s*(?:小时|h)/i);
-    if (m) secs = Math.round(parseFloat(m[1]) * 3600);
-  }
-  m = text.match(/(\d{2,4})\s*(?:千卡|大卡|kcal|卡路里)/i);
-  if (m) kcal = parseInt(m[1], 10);
-  if (!kcal) {
-    m = text.match(/消耗[^\d]{0,8}(\d{2,4})/);
-    if (m) kcal = parseInt(m[1], 10);
-  }
-  if (!kcal) {
-    m = text.match(/(\d{2,4})\s*(?:千卡|大卡|kcal|卡路里)/i);
-    if (m) kcal = parseInt(m[1], 10);
-  }
-  if (kcal != null && (kcal < 1 || kcal > 5000)) kcal = null;
-  if (!km && !secs && !kcal) return null;
-  if (!kcal) {
-    const w = Number(DB.profile.weightKg) || 60;
-    kcal = Math.round(act.met * w * (secs / 3600));
-  }
-  const mins = Math.round(secs / 60);
-  const parts = [];
-  if (km) parts.push(trimNum(km.toFixed(2)) + ' 公里');
-  if (mins) parts.push(mins + ' 分钟');
-  parts.push(kcal + ' kcal');
-  return { date: date, name: act.name, km: km, mins: mins, kcal: kcal, detail: parts.join(' · ') };
-}
-
-/* 一整段文字(可能是多张截图的 OCR 结果)→ 记录数组;按日期切块 */
-function parseKeepText(text) {
-  const raw = fixOcr(text);
-  if (!raw.trim()) return [];
-  const marks = [];
-  let m;
-  KEEP_DATE_RE.lastIndex = 0;
-  while ((m = KEEP_DATE_RE.exec(raw)) !== null) {
-    const d = keepDate(m);
-    if (d) marks.push({ date: d, start: m.index, end: KEEP_DATE_RE.lastIndex });
-  }
-  const out = [];
-  if (!marks.length) {
-    const one = parseKeepBlock(TODAY(), raw);
-    if (one) out.push(one);
-    return out;
-  }
-  marks.forEach(function (mk, i) {
-    const to = i + 1 < marks.length ? marks[i + 1].start : raw.length;
-    const r = parseKeepBlock(mk.date, raw.slice(mk.end, to));
-    if (r) out.push(r);
-  });
-  return out;
-}
-
-function doKeepImport() {
-  const ta = $('keep-text');
-  const note = $('keep-note');
-  const recs = parseKeepText(ta.value);
-  if (!recs.length) {
-    shake(ta);
-    note.textContent = '没认出记录:需要运动名称(跑步/骑行…)和 距离/时长/消耗 中的至少一项。';
-    return 0;
-  }
-  let added = 0, dup = 0;
-  recs.forEach(function (r) {
-    const d = DB.days[r.date] || (DB.days[r.date] = { items: [], cups: 0, cupTimes: [] });
-    if (!Array.isArray(d.items)) d.items = [];
-    if (!d.type) d.type = 'cardio';
-    const nm = r.name + (r.km ? ' ' + trimNum(r.km.toFixed(2)) + 'km' : '');
-    if (d.items.some(function (it) { return it.name === nm; })) { dup++; return; }
-    d.items.push({ name: nm, detail: r.detail });
-    d.kcalBurn = Math.round((Number(d.kcalBurn) || 0) + r.kcal);
-    touch(d);
-    added++;
-  });
-  save();
-  render();
-  const list = recs.map(function (r) { return r.date.slice(5) + ' ' + r.name + ' ' + r.kcal + 'kcal'; }).join('、');
-  note.textContent = '已导入 ' + added + ' 条' + (dup ? '(跳过 ' + dup + ' 条重复)' : '') + ':' + list;
-  return added;
-}
-
-/* ---------- Keep 截图识别(本机 OCR,图片不上传) ---------- */
-const OCR_S = { lib: null, worker: null, loading: null };
-
-function ocrBar(pct, label) {
-  const box = $('keep-progress'), bar = $('keep-bar'), txt = $('keep-pct');
-  if (box) box.hidden = false;
-  if (bar) bar.style.width = Math.max(2, Math.min(100, pct)) + '%';
-  if (txt) txt.textContent = label || (pct + '%');
-}
-
-function loadOcrLib() {
-  if (window.Tesseract) return Promise.resolve(window.Tesseract);
-  if (OCR_S.lib) return OCR_S.lib;
-  OCR_S.lib = new Promise(function (res, rej) {
-    const s = document.createElement('script');
-    s.src = 'vendor/tesseract/tesseract.min.js';
-    s.async = true;
-    s.onload = function () {
-      if (window.Tesseract) res(window.Tesseract); else rej(new Error('识别引擎未就绪'));
-    };
-    s.onerror = function () { OCR_S.lib = null; rej(new Error('无法加载识别引擎')); };
-    (document.head || document.body).appendChild(s);
-  });
-  return OCR_S.lib;
-}
-
-/* worker 用 blob 方式启动,路径必须是绝对 URL */
-function vendorBase() {
-  const href = (typeof location !== 'undefined' && location.href) ? location.href : 'http://localhost/';
-  return new URL('vendor/tesseract/', href).href.replace(/\/$/, '');
-}
-
-function getOcrWorker() {
-  if (OCR_S.worker) return Promise.resolve(OCR_S.worker);
-  if (OCR_S.loading) return OCR_S.loading;
-  OCR_S.loading = loadOcrLib().then(function (T) {
-    const base = vendorBase();
-    return T.createWorker('chi_sim+eng', 1, {
-      workerPath: base + '/worker.min.js',
-      corePath: base,
-      langPath: base + '/lang',
-      gzip: true,
-      logger: function (msg) {
-        if (msg && msg.status === 'recognizing text') ocrBar(Math.round((msg.progress || 0) * 100), '识别中 ' + Math.round((msg.progress || 0) * 100) + '%');
-      }
-    });
-  }).then(function (w) { OCR_S.worker = w; return w; });
-  return OCR_S.loading;
-}
-
-/* 超大图先缩到 2000px 内,手机上更快 */
-function prepareImage(file) {
-  return new Promise(function (res) {
-    const url = URL.createObjectURL(file);
-    const im = new Image();
-    const done = function (obj) { res(obj); };
-    im.onload = function () {
-      const max = 2000;
-      if (im.width <= max && im.height <= max) { done({ url: url, blob: null, w: im.width, h: im.height }); return; }
-      const sc = max / Math.max(im.width, im.height);
-      const cv = document.createElement('canvas');
-      cv.width = Math.round(im.width * sc);
-      cv.height = Math.round(im.height * sc);
-      cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
-      if (cv.toBlob) cv.toBlob(function (b) { done({ url: url, blob: b, w: cv.width, h: cv.height }); }, 'image/jpeg', 0.92);
-      else done({ url: url, blob: null, w: im.width, h: im.height });
-    };
-    im.onerror = function () { done({ url: url, blob: null, w: 0, h: 0 }); };
-    im.src = url;
-  });
-}
-
-function ocrFile(file) {
-  if (!file) return Promise.resolve();
-  const note = $('keep-note');
-  const pv = $('keep-preview'), pimg = $('keep-img');
-  ocrBar(3, '准备中…');
-  note.textContent = '正在本机识别截图,首次使用要加载约 11MB 识别组件(之后走缓存)。';
-  return prepareImage(file).then(function (prep) {
-    if (pv && pimg) {
-      pimg.src = prep.url;
-      pimg.style.maxWidth = '96px';
-      pv.hidden = false;
-    }
-    return getOcrWorker().then(function (w) {
-      ocrBar(10, '识别中…');
-      return w.recognize(prep.blob || file);
-    });
-  }).then(function (res) {
-    const text = String((res && res.data && res.data.text) || '').replace(/\r/g, '').trim();
-    if (!text) {
-      note.textContent = '这张图没识别出文字,换一张更清晰的截图,或直接粘贴 Keep 分享的文字。';
-      return;
-    }
-    const ta = $('keep-text');
-    ta.value = (ta.value ? ta.value.replace(/\s+$/, '') + '\n' : '') + text;
-    ocrBar(100, '识别完成');
-    const n = doKeepImport();
-    if (!n) note.textContent = '识别出文字但没匹配到运动记录,可手动修改上面的文字再点「解析并导入」。';
-    setTimeout(function () { const box = $('keep-progress'); if (box) box.hidden = true; }, 1500);
-  }).catch(function (err) {
-    note.textContent = '识别失败:' + (err && err.message ? err.message : '未知错误') + '。也可以直接把 Keep 分享文字粘到框里。';
-    const box = $('keep-progress');
-    if (box) box.hidden = true;
-  });
-}
-
-$('keep-import').addEventListener('click', doKeepImport);
-$('keep-shot').addEventListener('click', function () { $('keep-file').click(); });
-$('keep-cam').addEventListener('click', function () { $('keep-file-cam').click(); });
-$('keep-file').addEventListener('change', function (e) { const f = e.target.files && e.target.files[0]; e.target.value = ''; ocrFile(f); });
-$('keep-file-cam').addEventListener('change', function (e) { const f = e.target.files && e.target.files[0]; e.target.value = ''; ocrFile(f); });
-window.addEventListener('pagehide', function () {
-  if (OCR_S.worker) { try { OCR_S.worker.terminate(); } catch (err) {} OCR_S.worker = null; }
+$('cal-prev').addEventListener('click', () => shiftMonth(-1));
+$('cal-next').addEventListener('click', () => shiftMonth(1));
+$('cal-today').addEventListener('click', goToday);
+$('cal-grid').addEventListener('click', e => {
+  if (Date.now() - lastSwipeAt < 400) return;       /* 滑动翻月后不要顺手选中某天 */
+  const b = e.target.closest('.cal-day');
+  if (!b || !b.dataset.k) return;
+  pickDate(b.dataset.k);
 });
-/* ---------- 锻炼页事件 ---------- */
-$('prev-day').addEventListener('click', () => { viewDate = keyOf(d2(-1)); render(); });
-$('next-day').addEventListener('click', () => { viewDate = keyOf(d2(1)); render(); });
-$('back-today').addEventListener('click', () => { viewDate = TODAY(); render(); });
 
+/* 左右滑动切换月份 */
+(function bindSwipe() {
+  let sx = 0, sy = 0, tracking = false;
+  const box = $('cal-card');
+  box.addEventListener('touchstart', e => {
+    if (!e.touches || !e.touches.length) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; tracking = true;
+  }, { passive: true });
+  box.addEventListener('touchend', e => {
+    if (!tracking || !e.changedTouches || !e.changedTouches.length) return;
+    tracking = false;
+    const dx = e.changedTouches[0].clientX - sx;
+    const dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      lastSwipeAt = Date.now();
+      shiftMonth(dx > 0 ? -1 : 1);
+    }
+  }, { passive: true });
+})();
+
+/* ---------- 类型 / 项目 ---------- */
 document.querySelectorAll('.type-btn').forEach(b => b.addEventListener('click', () => {
-  const day = DB.days[viewDate] || (DB.days[viewDate] = { items: [], cups: 0, cupTimes: [] });
-  day.type = b.dataset.type;
+  const day = ensureDay(viewDate);
+  day.type = (day.type === b.dataset.type) ? null : b.dataset.type;
   touch(day);
-  save(); render();
+  save(); renderAll();
 }));
 
-$('item-add').addEventListener('click', addItem);
-$('item-input').addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
-function addItem() {
+function addItemByName(name) {
+  const day = ensureDay(viewDate);
+  if (!Array.isArray(day.items)) day.items = [];
+  if (day.items.some(it => it.name === name)) return false;
+  day.items.push({ name: name, detail: '' });
+  touch(day);
+  save(); renderAll();
+  return true;
+}
+$('item-add').addEventListener('click', () => {
   const inp = $('item-input');
   const name = inp.value.trim();
   if (!name) { shake(inp); return; }
-  const day = DB.days[viewDate] || (DB.days[viewDate] = { items: [], cups: 0, cupTimes: [] });
-  if (!Array.isArray(day.items)) day.items = [];
-  day.items.push({ name: name, detail: '' });
-  touch(day);
-  inp.value = '';
-  save(); render();
-}
-document.querySelectorAll('#quick-row .chip').forEach(c => c.addEventListener('click', () => {
-  const name = c.dataset.name;
-  const day = DB.days[viewDate] || (DB.days[viewDate] = { items: [], cups: 0, cupTimes: [] });
-  if (!Array.isArray(day.items)) day.items = [];
-  if (day.items.some(it => it.name === name)) return;
-  day.items.push({ name: name, detail: '' });
-  touch(day);
-  save(); render();
-}));
+  if (addItemByName(name)) inp.value = '';
+});
+$('item-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('item-add').click(); });
+document.querySelectorAll('#quick-row .chip').forEach(c => c.addEventListener('click', () => addItemByName(c.dataset.name)));
+
 $('item-list').addEventListener('click', e => {
   const btn = e.target.closest('.item-del');
   if (!btn) return;
   const day = DB.days[viewDate];
-  if (day && day.items) { day.items.splice(Number(btn.dataset.i), 1); touch(day); save(); render(); }
+  if (day && Array.isArray(day.items)) {
+    day.items.splice(Number(btn.dataset.i), 1);
+    touch(day); save(); renderAll();
+  }
 });
 $('item-list').addEventListener('change', e => {
+  const box = e.target.closest('.item-done');
+  if (box) {
+    const day = DB.days[viewDate];
+    const it = day && day.items && day.items[Number(box.dataset.i)];
+    if (!it) return;
+    it.done = !!box.checked;
+    touch(day); save(); renderAll();
+    return;
+  }
   const inp = e.target.closest('.item-detail');
-  if (!inp) return;
-  const day = DB.days[viewDate];
-  if (day && day.items && day.items[inp.dataset.i]) {
-    day.items[inp.dataset.i].detail = inp.value.trim();
-    touch(day);
-    save();
-    renderConfirm(day, day.type);
-    renderHistory();
+  if (inp) {
+    const day = DB.days[viewDate];
+    const it = day && day.items && day.items[Number(inp.dataset.i)];
+    if (!it) return;
+    it.detail = inp.value.trim();
+    touch(day); save(); renderDay();
   }
 });
 
-$('item-list').addEventListener('change', e => {
-  const box = e.target.closest('.item-done');
-  if (!box) return;
-  const day = DB.days[viewDate];
-  const it = day && day.items && day.items[Number(box.dataset.i)];
-  if (!it) return;
-  it.done = !!box.checked;
+$('copy-last').addEventListener('click', () => {
+  const last = prevDayWithItems(viewDate);
+  if (!last) return;
+  const src = DB.days[last.key];
+  const day = ensureDay(viewDate);
+  if (!Array.isArray(day.items)) day.items = [];
+  src.items.forEach(it => {
+    if (!day.items.some(x => x.name === it.name)) {
+      day.items.push({ name: it.name, detail: it.detail || '' });
+    }
+  });
+  if (!day.type && src.type) day.type = src.type;
   touch(day);
-  save(); render();
+  save(); renderAll();
 });
 
 $('confirm-chk').addEventListener('change', () => {
@@ -733,19 +431,9 @@ $('confirm-chk').addEventListener('change', () => {
 });
 $('confirm-save').addEventListener('click', confirmSave);
 
-$('hist-list').addEventListener('click', e => {
-  const row = e.target.closest('.hist-row');
-  if (!row) return;
-  viewDate = row.dataset.k;
-  render();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
-
-/* ---------- 喝水页事件 ---------- */
-$('cup-plus').addEventListener('click', () => addCup(1));
-$('cup-minus').addEventListener('click', () => addCup(-1));
+/* ---------- 喝水 ---------- */
 function addCup(delta) {
-  const day = DB.days[viewDate] || (DB.days[viewDate] = { items: [], cups: 0, cupTimes: [] });
+  const day = ensureDay(TODAY());
   if (delta > 0) {
     day.cups = (day.cups || 0) + 1;
     (day.cupTimes = day.cupTimes || []).push(new Date().toTimeString().slice(0, 5));
@@ -753,85 +441,31 @@ function addCup(delta) {
     day.cups = Math.max((day.cups || 0) - 1, 0);
     if (Array.isArray(day.cupTimes) && day.cupTimes.length) day.cupTimes.pop();
   }
-  save(); render();
+  save(); renderAll();
 }
+$('cup-plus').addEventListener('click', () => addCup(1));
+$('cup-minus').addEventListener('click', () => addCup(-1));
 $('custom-add').addEventListener('click', () => {
   const inp = $('custom-ml');
   const ml = parseInt(inp.value, 10);
   if (!ml || ml <= 0) { shake(inp); return; }
-  const day = DB.days[viewDate] || (DB.days[viewDate] = { items: [], cups: 0, cupTimes: [] });
+  const day = ensureDay(TODAY());
   const extra = Math.round(ml / Math.max(1, DB.profile.cupMl || 250) * 10) / 10;
   day.cups = Math.round(((day.cups || 0) + extra) * 10) / 10;
   inp.value = '';
-  save(); render();
+  save(); renderAll();
 });
 function bindSetting(id, fn) {
-  $(id).addEventListener('change', e => { fn(e.target.value); save(); render(); });
+  $(id).addEventListener('change', e => { fn(e.target.value); save(); renderAll(); });
 }
 bindSetting('set-cup', v => { const n = parseInt(v, 10); if (n >= 50) DB.profile.cupMl = n; });
 bindSetting('set-goal', v => { const n = parseInt(v, 10); if (n >= 1) DB.profile.cupsGoal = n; });
-bindSetting('set-kcal', v => { const n = parseInt(v, 10); if (n >= 800 && n <= 6000) DB.profile.kcalGoal = n; });
 
-/* ---------- 饮食页事件 ---------- */
-$('diet-prev').addEventListener('click', () => { viewDate = keyOf(d2(-1)); render(); });
-$('diet-next').addEventListener('click', () => { viewDate = keyOf(d2(1)); render(); });
-$('diet-today').addEventListener('click', () => { viewDate = TODAY(); render(); });
-
-document.querySelectorAll('#meal-row .meal-btn').forEach(b => b.addEventListener('click', () => {
-  curMeal = b.dataset.meal;
-  document.querySelectorAll('#meal-row .meal-btn').forEach(x => x.classList.toggle('on', x === b));
-}));
-
-function addFood(name, kcal, qty) {
-  const day = DB.days[viewDate] || (DB.days[viewDate] = { items: [], cups: 0, cupTimes: [] });
-  if (!Array.isArray(day.foods)) day.foods = [];
-  day.foods.push({ meal: curMeal, name: name, kcal: kcal, qty: qty || 1 });
-  save(); render();
-}
-$('food-add').addEventListener('click', () => {
-  const ni = $('food-name'), ki = $('food-kcal');
-  const name = ni.value.trim();
-  const kcal = parseInt(ki.value, 10);
-  if (!name) { shake(ni); return; }
-  if (!kcal || kcal <= 0 || kcal > 5000) { shake(ki); return; }
-  const known = FOOD_DB.some(f => f.name === name) || (DB.foods || []).some(f => f.name === name);
-  if (!known) (DB.foods = DB.foods || []).push({ name: name, kcal: kcal });
-  addFood(name, kcal, 1);
-  ni.value = ''; ki.value = '';
-});
-$('food-quick').addEventListener('click', e => {
-  const c = e.target.closest('.chip');
-  if (!c) return;
-  const kcal = parseInt(c.dataset.kcal, 10);
-  if (!kcal) return;
-  addFood(c.dataset.name, kcal, 1);
-});
-$('diet-list').addEventListener('click', e => {
-  const btn = e.target.closest('button[data-act]');
-  if (!btn) return;
-  const day = DB.days[viewDate];
-  if (!day || !Array.isArray(day.foods)) return;
-  const i = Number(btn.dataset.i);
-  const f = day.foods[i];
-  if (!f) return;
-  const act = btn.dataset.act;
-  if (act === 'del') {
-    day.foods.splice(i, 1);
-  } else if (act === 'plus') {
-    f.qty = Math.min((Number(f.qty) || 1) + 0.5, 20);
-  } else if (act === 'minus') {
-    const q = (Number(f.qty) || 1) - 0.5;
-    if (q <= 0) day.foods.splice(i, 1); else f.qty = q;
-  }
-  save(); render();
-});
-
-/* ---------- 我的页事件 ---------- */
+/* ---------- 我的 ---------- */
 $('bmi-save').addEventListener('click', () => {
   const h = parseFloat($('bmi-h').value), w = parseFloat($('bmi-w').value);
   if (!h || !w || h < 80 || h > 250 || w < 25 || w > 250) {
-    $('bmi-h').classList.add('shake'); $('bmi-w').classList.add('shake');
-    setTimeout(() => { $('bmi-h').classList.remove('shake'); $('bmi-w').classList.remove('shake'); }, 350);
+    shake($('bmi-h')); shake($('bmi-w'));
     return;
   }
   DB.profile.heightCm = h; DB.profile.weightKg = w;
@@ -858,9 +492,8 @@ $('btn-import').addEventListener('click', () => {
         if (!confirm('导入将覆盖当前全部数据,确定吗?')) return;
         DB = d;
         if (!DB.profile) DB.profile = blank().profile;
-        if (!Array.isArray(DB.foods)) DB.foods = [];
-        if (DB.profile.kcalGoal == null) DB.profile.kcalGoal = 1800;
-        save(); render();
+        if (!Array.isArray(DB.profile.weightLog)) DB.profile.weightLog = [];
+        save(); renderAll();
       } catch (e) { alert('文件格式不对,导入失败'); }
     };
     r.readAsText(f);
@@ -868,7 +501,7 @@ $('btn-import').addEventListener('click', () => {
   inp.click();
 });
 
-render();
+renderAll();
 
 // Service Worker:仅网页版注册(PWA 离线);WebView 容器里由 window.__NO_SW 关闭
 if ('serviceWorker' in navigator && !window.__NO_SW) {
