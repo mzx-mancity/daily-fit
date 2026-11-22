@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#22c55e">
+<meta name="robots" content="noindex">
+<title>每日 Fit · 锻炼打卡</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="css/style.css">
+<script>if(location.hostname==='appassets.androidplatform.net')window.__NO_SW=1;</script>
+</head>
+<body>
+<div class="app">
+
+  <!-- ========== 页面1: 锻炼打卡 ========== -->
+  <section class="page active" id="page-workout">
+    <div class="date-card">
+      <button class="nav-btn" id="prev-day" aria-label="前一天">‹</button>
+      <div class="date-mid">
+        <div class="date-main" id="date-title">—</div>
+        <button class="today-btn" id="back-today" hidden>回到今天</button>
+      </div>
+      <button class="nav-btn" id="next-day" aria-label="后一天">›</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">今日运动类型</div>
+      <div class="type-row">
+        <button class="type-btn t-cardio" data-type="cardio">🏃 有氧运动</button>
+        <button class="type-btn t-strength" data-type="strength">💪 无氧运动</button>
+        <button class="type-btn t-rest" data-type="rest">😌 休息日</button>
+      </div>
+      <div id="rest-tip" class="rest-tip" hidden>好好休息,恢复也是训练的一部分 🌙</div>
+    </div>
+
+    <div class="card" id="items-card">
+      <div class="card-title">锻炼项目 <span class="hint">(可自定义,如 臀腿 / 肩 / 跑步)</span></div>
+      <div class="add-row">
+        <input id="item-input" maxlength="12" placeholder="项目名称,如:臀腿">
+        <button class="add-btn" id="item-add">添加</button>
+      </div>
+      <div class="quick-row" id="quick-row">
+        <button class="chip" data-name="臀">臀</button>
+        <button class="chip" data-name="腿">腿</button>
+        <button class="chip" data-name="肩">肩</button>
+        <button class="chip" data-name="胸">胸</button>
+        <button class="chip" data-name="背">背</button>
+        <button class="chip" data-name="手臂">手臂</button>
+        <button class="chip" data-name="核心">核心</button>
+        <button class="chip" data-name="跑步">跑步</button>
+        <button class="chip" data-name="跳绳">跳绳</button>
+        <button class="chip" data-name="游泳">游泳</button>
+        <button class="chip" data-name="骑行">骑行</button>
+        <button class="chip" data-name="瑜伽">瑜伽</button>
+      </div>
+      <ul class="item-list" id="item-list"></ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Keep 数据导入 <span class="hint">(截图识别 / 粘贴文字)</span></div>
+      <div class="keep-pick">
+        <button class="ghost-btn" id="keep-shot">选择截图</button>
+        <button class="ghost-btn" id="keep-cam">拍照识别</button>
+        <input type="file" id="keep-file" accept="image/*" hidden>
+        <input type="file" id="keep-file-cam" accept="image/*" capture="environment" hidden>
+      </div>
+      <div class="keep-progress" id="keep-progress" hidden>
+        <div class="keep-bar" id="keep-bar"></div>
+        <span class="keep-pct" id="keep-pct">0%</span>
+      </div>
+      <div class="keep-preview" id="keep-preview" hidden><img id="keep-img" alt="截图预览"></div>
+      <textarea id="keep-text" rows="4" placeholder="点上面「选择截图」自动识别,也可以直接粘贴 Keep 分享的文字,例如:
+11月20日 跑步 5.00 公里 用时 00:32:15 消耗 320 千卡"></textarea>
+      <button class="save-btn" id="keep-import">解析并导入</button>
+      <div class="set-note" id="keep-note">Keep 没有开放第三方接口,无法自动同步。截图在本机识别、不上传;识别结果会填到上面,可改完再导入。</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">坚持记录</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num" id="streak-num">0</div><div class="stat-label">连续打卡(天)</div></div>
+        <div class="stat-box"><div class="stat-num" id="week-num">0</div><div class="stat-label">近7天(次)</div></div>
+      </div>
+      <div class="week-strip" id="week-strip"></div>
+    </div>
+  </section>
+
+  <!-- ========== 页面2: 喝水记录 ========== -->
+  <section class="page" id="page-water">
+    <div class="card water-hero">
+      <div class="ring-wrap">
+        <div class="ring" id="water-ring">
+          <svg viewBox="0 0 120 120">
+            <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+            <circle class="ring-fg" id="ring-fg" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-cups"><span id="ring-cups">0</span><span class="ring-goal">/ <span id="ring-goal">5</span> 杯</span></div>
+            <div class="ring-ml" id="ring-ml">0 ml</div>
+          </div>
+        </div>
+      </div>
+      <div class="water-btns">
+        <button class="water-btn minus" id="cup-minus">➖ 撤销</button>
+        <button class="water-btn plus" id="cup-plus">🥤 记一杯</button>
+      </div>
+      <div class="custom-row">
+        <input id="custom-ml" type="number" min="1" inputmode="numeric" placeholder="自定义 ml,如 150">
+        <button class="add-btn" id="custom-add">记录</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">喝水设置</div>
+      <div class="set-grid">
+        <label>水杯容量 (ml)<input id="set-cup" type="number" min="50" inputmode="numeric"></label>
+        <label>每日目标 (杯)<input id="set-goal" type="number" min="1" inputmode="numeric"></label>
+      </div>
+      <div class="set-note" id="set-note">目标总量:1250 ml</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">近 7 天饮水</div>
+      <div class="bars" id="water-bars"></div>
+      <div class="bar-x" id="water-bar-x"></div>
+    </div>
+  </section>
+
+  <!-- ========== 页面3: 我的 ========== -->
+  <section class="page" id="page-me">
+    <div class="card">
+      <div class="card-title">身体数据 · BMI</div>
+      <div class="set-grid">
+        <label>身高 (cm)<input id="bmi-h" type="number" min="80" max="250" inputmode="decimal" placeholder="如 170"></label>
+        <label>体重 (kg)<input id="bmi-w" type="number" min="25" max="250" inputmode="decimal" placeholder="如 60"></label>
+      </div>
+      <button class="save-btn" id="bmi-save">保存并计算</button>
+      <div class="bmi-result" id="bmi-result" hidden>
+        <div class="bmi-line">你的 BMI:<span class="bmi-num" id="bmi-num">—</span></div>
+        <div class="bmi-tag" id="bmi-tag">—</div>
+        <div class="bmi-scale">
+          <div class="scale-bar"><span class="seg s1"></span><span class="seg s2"></span><span class="seg s3"></span><span class="seg s4"></span></div>
+          <div class="scale-pointer" id="bmi-pointer" hidden></div>
+        </div>
+        <div class="scale-labels"><span>偏瘦&lt;18.5</span><span>正常</span><span>超重24+</span><span>肥胖28+</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">体重记录 <span class="hint">(保存时自动记录)</span></div>
+      <ul class="wlist" id="wlist"></ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">数据备份</div>
+      <div class="backup-row">
+        <button class="save-btn half" id="btn-export">📤 导出数据</button>
+        <button class="save-btn half ghost" id="btn-import">📥 导入数据</button>
+      </div>
+      <div class="set-note">数据仅保存在本机浏览器中,换手机请先导出备份。</div>
+    </div>
+
+    <div class="about">每日 Fit · v1.1 · 本地离线优先</div>
+  </section>
+
+  <!-- ========== 页面4: 饮食记录 ========== -->
+  <section class="page" id="page-diet">
+    <div class="date-card diet-datecard">
+      <button class="nav-btn" id="diet-prev" aria-label="前一天">‹</button>
+      <div class="date-mid">
+        <div class="date-main" id="diet-date">—</div>
+        <button class="today-btn" id="diet-today" hidden>回到今天</button>
+      </div>
+      <button class="nav-btn" id="diet-next" aria-label="后一天">›</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">今日摄入</div>
+      <div class="kcal-hero">
+        <div class="kcal-num"><span id="diet-total">0</span><span class="kcal-unit">kcal</span></div>
+        <div class="kcal-goal">目标 <span id="diet-goal">1800</span> kcal</div>
+      </div>
+      <div class="kcal-barwrap"><div class="kcal-bar" id="diet-bar"></div></div>
+      <div class="diet-left" id="diet-left">还可摄入 1800 kcal</div>
+      <div class="diet-burn" id="diet-burn" hidden></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">添加食物 <span class="hint">(点常用食物一键记录)</span></div>
+      <div class="meal-row" id="meal-row">
+        <button class="meal-btn on" data-meal="早餐">早餐</button>
+        <button class="meal-btn" data-meal="午餐">午餐</button>
+        <button class="meal-btn" data-meal="晚餐">晚餐</button>
+        <button class="meal-btn" data-meal="加餐">加餐</button>
+      </div>
+      <div class="add-row">
+        <input id="food-name" maxlength="12" placeholder="食物,如:香蕉">
+        <input id="food-kcal" class="kcal-input" type="number" min="0" inputmode="numeric" placeholder="kcal">
+        <button class="add-btn" id="food-add">添加</button>
+      </div>
+      <div class="quick-row" id="food-quick"></div>
+      <ul class="item-list" id="diet-list"></ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">近 7 天摄入</div>
+      <div class="bars" id="diet-bars"></div>
+      <div class="bar-x" id="diet-bar-x"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">饮食目标</div>
+      <div class="set-grid">
+        <label>每日目标 (kcal)<input id="set-kcal" type="number" min="800" max="6000" inputmode="numeric"></label>
+      </div>
+      <div class="set-note">默认 1800 kcal,可按自身情况调整;运动消耗会显示在今日摄入卡片里。</div>
+    </div>
+  </section>
+
+  <!-- 底部导航 -->
+  <nav class="tabbar">
+    <button class="tab active" data-page="workout"><span class="ticon">🏋️</span><span>锻炼</span></button>
+    <button class="tab" data-page="water"><span class="ticon">💧</span><span>喝水</span></button>
+    <button class="tab" data-page="diet"><span class="ticon">🍚</span><span>饮食</span></button>
+    <button class="tab" data-page="me"><span class="ticon">📊</span><span>我的</span></button>
+  </nav>
+</div>
+<script src="js/app.js"></script>
+</body>
+</html>

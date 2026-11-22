@@ -1,0 +1,196 @@
+/* 每日 Fit · 锻炼打卡 — 移动端优先 */
+:root{
+  --green:#22c55e; --green-dark:#16a34a; --green-bg:#ecfdf5;
+  --blue:#0ea5e9; --blue-bg:#eff8ff;
+  --orange:#f97316; --orange-bg:#fff7ed;
+  --gray:#6b7280; --line:#e5e7eb; --bg:#f4f6f8;
+  --card:#ffffff; --text:#1f2937;
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;max-width:100%;overflow-x:hidden}
+input,textarea,select{min-width:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);
+}
+.app{max-width:480px;margin:0 auto;min-height:100dvh;padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+
+/* 页面切换 */
+.page{display:none;padding:14px 14px 20px;animation:fade .18s ease}
+.page.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* 卡片 */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card-title{font-weight:700;font-size:15px;margin-bottom:12px}
+.card-title .hint{font-weight:400;font-size:12px;color:var(--gray)}
+
+/* 日期卡 */
+.date-card{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,var(--green),var(--green-dark));border-radius:var(--radius);padding:14px 10px;margin-bottom:14px;color:#fff;box-shadow:0 4px 12px rgba(34,197,94,.25)}
+.date-mid{text-align:center;flex:1}
+.date-main{font-size:18px;font-weight:700}
+.today-btn{margin-top:4px;background:rgba(255,255,255,.25);color:#fff;border:none;border-radius:999px;font-size:12px;padding:3px 12px;cursor:pointer}
+.nav-btn{width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.22);color:#fff;font-size:22px;line-height:1;cursor:pointer}
+.nav-btn:active{background:rgba(255,255,255,.4)}
+
+/* 类型三选一 */
+.type-row{display:flex;gap:10px}
+.type-btn{flex:1;padding:14px 4px;border-radius:12px;border:1.5px solid var(--line);background:#fafafa;font-size:14px;font-weight:600;color:var(--gray);cursor:pointer;transition:.15s}
+.type-btn:active{transform:scale(.96)}
+.t-cardio.on{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+.t-strength.on{background:var(--orange-bg);border-color:var(--orange);color:var(--orange)}
+.t-rest.on{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
+.rest-tip{margin-top:12px;text-align:center;font-size:13px;color:var(--green-dark);background:var(--green-bg);border-radius:10px;padding:10px}
+
+/* 项目 */
+.add-row{display:flex;gap:8px;margin-bottom:12px}
+.add-row input{flex:1 1 0;min-width:0;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;outline:none}
+.add-row input:focus{border-color:var(--green)}
+.add-btn{border:none;background:var(--green);color:#fff;border-radius:10px;padding:0 18px;font-size:14px;font-weight:600;cursor:pointer}
+.add-btn:active{background:var(--green-dark)}
+.quick-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.chip{border:1.5px dashed var(--line);background:#fafafa;border-radius:999px;padding:6px 13px;font-size:13px;color:var(--gray);cursor:pointer}
+.chip:active{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
+.item-list{list-style:none}
+.item-list li{display:flex;align-items:center;gap:10px;background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.item-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex:none}
+.item-name{font-weight:600;font-size:14px}
+.item-detail{flex:1;border:none;background:transparent;font-size:13px;color:var(--gray);outline:none;min-width:0}
+.item-detail::placeholder{color:#c0c4cc}
+.item-del{border:none;background:#fef2f2;color:#ef4444;width:28px;height:28px;border-radius:8px;font-size:15px;cursor:pointer;flex:none}
+.empty-tip{text-align:center;color:#9ca3af;font-size:13px;padding:14px 0}
+
+/* 统计 */
+.stats-row{display:flex;gap:10px;margin-bottom:12px}
+.stat-box{flex:1;background:var(--green-bg);border-radius:12px;text-align:center;padding:12px 0}
+.stat-num{font-size:26px;font-weight:800;color:var(--green-dark)}
+.stat-label{font-size:12px;color:var(--gray);margin-top:2px}
+.week-strip{display:flex;gap:8px}
+.wday{flex:1;text-align:center;background:#f7f8fa;border-radius:10px;padding:8px 0}
+.wday .w-lab{font-size:11px;color:var(--gray)}
+.wday .w-chip{margin-top:4px;font-size:12px;font-weight:700;width:26px;height:26px;line-height:26px;border-radius:50%;margin-left:auto;margin-right:auto;background:#e5e7eb;color:#9ca3af}
+.wday.hit-cardio .w-chip{background:var(--blue);color:#fff}
+.wday.hit-strength .w-chip{background:var(--orange);color:#fff}
+.wday.hit-rest .w-chip{background:var(--green);color:#fff}
+.wday.today-out{outline:1.5px dashed var(--green)}
+
+/* 喝水 */
+.water-hero{text-align:center}
+.ring-wrap{display:flex;justify-content:center;margin:6px 0 14px}
+.ring{position:relative;width:190px;height:190px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:#eef2f5;stroke-width:11}
+.ring-fg{fill:none;stroke:var(--blue);stroke-width:11;stroke-linecap:round;stroke-dasharray:326.73;stroke-dashoffset:326.73;transition:stroke-dashoffset .4s ease,stroke .3s}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-cups{font-size:30px;font-weight:800}
+.ring-goal{font-size:15px;color:var(--gray);font-weight:500}
+.ring-ml{font-size:13px;color:var(--gray);margin-top:4px}
+.water-btns{display:flex;gap:10px;margin-bottom:12px}
+.water-btn{flex:1;padding:14px 0;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
+.water-btn:active{transform:scale(.97)}
+.water-btn.plus{background:var(--blue);color:#fff;box-shadow:0 4px 10px rgba(14,165,233,.3)}
+.water-btn.minus{background:#f1f5f9;color:var(--gray)}
+.custom-row{display:flex;gap:8px}
+.custom-row input{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;outline:none}
+.custom-row input:focus{border-color:var(--blue)}
+.shake{animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* 设置 */
+.set-grid{display:flex;gap:10px;margin-bottom:10px}
+.set-grid label{flex:1 1 0;min-width:0;font-size:12px;color:var(--gray);display:flex;flex-direction:column;gap:6px}
+.set-grid input{min-width:0;max-width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;outline:none;width:100%}
+.set-grid input:focus{border-color:var(--green)}
+.set-note{font-size:12px;color:var(--gray);margin-top:4px}
+
+/* 柱状图 */
+.bars{display:flex;align-items:flex-end;gap:8px;height:110px;padding-top:6px}
+.bar-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;background:transparent;border-radius:6px 6px 0 0}
+.bar{width:100%;background:linear-gradient(180deg,#38bdf8,var(--blue));border-radius:6px 6px 2px 2px;min-height:3px;transition:height .3s}
+.bar-x{display:flex;gap:8px;margin-top:6px}
+.bar-x span{flex:1;text-align:center;font-size:11px;color:var(--gray)}
+
+/* BMI */
+.save-btn{width:100%;border:none;background:var(--green);color:#fff;border-radius:12px;padding:13px 0;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+.save-btn:active{background:var(--green-dark)}
+.save-btn.half{width:auto;flex:1;margin-top:0}
+.save-btn.ghost{background:var(--green-bg);color:var(--green-dark)}
+.bmi-result{margin-top:16px;text-align:center}
+.bmi-line{font-size:14px;color:var(--gray)}
+.bmi-num{font-size:34px;font-weight:800;color:var(--text);margin-left:6px}
+.bmi-tag{display:inline-block;margin-top:8px;padding:4px 16px;border-radius:999px;font-size:13px;font-weight:700}
+.bmi-scale{position:relative;margin:22px 6px 4px;height:10px}
+.scale-bar{display:flex;height:10px;border-radius:999px;overflow:hidden}
+.seg{flex:1}
+.s1{background:#93c5fd}.s2{background:#4ade80}.s3{background:#fbbf24}.s4{background:#f87171}
+.scale-pointer{position:absolute;top:-8px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:12px solid var(--text);transform:translateX(-7px);transition:left .4s}
+.scale-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--gray);margin:6px 2px 0}
+
+/* 体重历史 */
+.wlist{list-style:none;max-height:180px;overflow:auto}
+.wlist li{display:flex;justify-content:space-between;padding:9px 2px;border-bottom:1px solid #f1f5f9;font-size:14px}
+.wlist .wdate{color:var(--gray)}
+.wlist .wkg{font-weight:700}
+
+/* 备份 */
+.backup-row{display:flex;gap:10px;margin-bottom:10px}
+.about{text-align:center;color:#9ca3af;font-size:12px;margin:8px 0 4px}
+
+/* 饮食 */
+.kcal-hero{text-align:center;margin:4px 0 12px}
+.kcal-num{font-size:40px;font-weight:800;line-height:1.1}
+.kcal-unit{font-size:14px;color:var(--gray);font-weight:600;margin-left:5px}
+.kcal-goal{font-size:12px;color:var(--gray);margin-top:3px}
+.kcal-barwrap{height:12px;background:#eef2f5;border-radius:999px;overflow:hidden;margin:12px 0 8px}
+.kcal-bar{height:100%;width:0;background:var(--green);border-radius:999px;transition:width .35s ease,background .3s}
+.diet-left{text-align:center;font-size:13px;color:var(--green-dark);font-weight:600}
+.diet-left.over{color:var(--orange)}
+.diet-burn{text-align:center;font-size:12px;color:var(--gray);margin-top:8px;background:#f8fafc;border-radius:9px;padding:7px}
+.meal-row{display:flex;gap:8px;margin-bottom:12px}
+.meal-btn{flex:1;padding:9px 0;border-radius:10px;border:1.5px solid var(--line);background:#fafafa;font-size:13px;font-weight:600;color:var(--gray);cursor:pointer;transition:.15s}
+.meal-btn.on{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
+.add-row .kcal-input{flex:0 0 72px;width:72px;min-width:0;text-align:center}
+.fd-name{font-weight:600;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fd-kcal{font-size:12px;color:var(--gray);flex:none}
+.fd-qty{font-size:13px;font-weight:700;min-width:24px;text-align:center;flex:none}
+.qty-btn{border:none;background:#f1f5f9;color:var(--text);width:24px;height:24px;border-radius:7px;font-size:15px;line-height:1;cursor:pointer;flex:none}
+.qty-btn:active{background:#e2e8f0}
+.meal-tag{font-size:10px;color:var(--green-dark);background:var(--green-bg);border-radius:5px;padding:2px 6px;flex:none}
+.bar.kcal{background:linear-gradient(180deg,#fb923c,var(--orange))}
+#keep-text{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;color:var(--text);outline:none;resize:vertical;margin-bottom:10px;line-height:1.5}
+#keep-text:focus{border-color:var(--green)}
+
+/* 底部导航 */
+.tabbar{position:fixed;bottom:0;left:0;right:0;margin:0 auto;transform:none;width:100%;max-width:480px;display:flex;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:10}
+.tab{flex:1;border:none;background:none;padding:9px 0 7px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--gray);cursor:pointer}
+.tab .ticon{font-size:21px;line-height:1}
+.tab.active{color:var(--green-dark);font-weight:700}
+
+/* ---------- Keep 截图识别 ---------- */
+.keep-pick { display: flex; gap: 10px; margin-bottom: 10px; }
+.ghost-btn {
+  flex: 1; padding: 11px 8px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--line, #e3e6ea); background: var(--card, #fff);
+  color: var(--text, #1b1f24); font-size: 14px; font-weight: 600;
+}
+.ghost-btn:active { transform: scale(0.98); }
+.keep-progress {
+  position: relative; height: 26px; border-radius: 13px; overflow: hidden;
+  background: var(--bg, #eef1f5); margin-bottom: 10px;
+}
+.keep-bar { height: 100%; width: 2%; background: linear-gradient(90deg, #2f7cf6, #57b0ff); transition: width .25s ease; }
+.keep-pct {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #33404f; letter-spacing: .3px;
+}
+.keep-preview { margin-bottom: 10px; }
+.keep-preview img { border-radius: 10px; border: 1px solid var(--line, #e3e6ea); display: block; }
+#keep-text { min-height: 92px; font-size: 14px; line-height: 1.6; }
+
+/* ---------- 小屏防横向溢出(修复饮食页把整页撑宽) ---------- */
+.page{max-width:100%;overflow-x:hidden}
+.card{max-width:100%}
+.item-list li{min-width:0}
+.chip{max-width:100%}
+.bars,.bar-x{min-width:0}
