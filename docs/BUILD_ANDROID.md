@@ -25,7 +25,8 @@ _android_build/
   sdk/android-34/          platform(android.jar)
   app/
     AndroidManifest.xml
-    java/com/mzx/dailyfit/MainActivity.java
+    java/com/mzx/dailyfit/MainActivity.java      主界面 + WebView + 文件选择/拍照
+    java/com/mzx/dailyfit/CacheFileProvider.java 极简 ContentProvider,给相机写照片用
     res/values/{strings,styles}.xml
     res/mipmap-*/ic_launcher.png
     assets/public/         从仓库根目录复制来的 index.html / css / js / vendor / icons
@@ -35,7 +36,7 @@ _android_build/
 
 1. aapt2 compile --dir res -o res.zip
 2. aapt2 link -o base.apk -I android.jar --manifest AndroidManifest.xml -A assets --java gen --min-sdk-version 24 --target-sdk-version 34 res.zip
-3. javac -encoding UTF-8 -source 8 -target 8 -classpath android.jar -d classes gen/.../R.java java/.../MainActivity.java
+3. javac -encoding UTF-8 -source 8 -target 8 -classpath android.jar -d classes gen/.../R.java java/.../CacheFileProvider.java java/.../MainActivity.java
 4. java -cp lib/d8.jar com.android.tools.r8.D8 --release --min-api 24 --lib android.jar --output dex classes/...
 5. 用 Python zipfile 把 classes.dex 追加进 base.apk
 6. zipalign -f -p 4 unsigned.apk aligned.apk
@@ -48,6 +49,16 @@ _android_build/
 - 每次改网页资源后都要重新复制到 app/assets/public/ 再打包,否则 App 里还是旧页面。
 - keystore 必须保留:换签名后覆盖安装会失败,得先卸载旧版。
 
+## 网页里的选图/拍照为什么要写 Java
+
+网页用 input type=file 选 Keep 截图,在普通浏览器里是原生能力,但在 WebView 里
+**默认的 WebChromeClient 不实现 onShowFileChooser**,点了完全没反应 —— 所以 MainActivity 里:
+
+- 重写 onShowFileChooser,把请求交给系统文件选择器(ACTION_GET_CONTENT,走 SAF,不需要存储权限)
+- 带 capture 的输入框走 ACTION_IMAGE_CAPTURE,照片写进 cacheDir/shots/shot_<时间戳>.jpg,
+  该文件通过 CacheFileProvider(authority com.mzx.dailyfit.files)暴露成 content:// URI ——
+  Android 7 以上不允许把 file:// 直接交给相机,会抛 FileUriExposedException
+- 用户选了拍照但没给相机权限时,自动退化成文件选择器,不会让按钮变成死键
 ## 为什么资源要走虚拟域名
 
 WebView 直接 loadUrl(file:///android_asset/index.html) 的 origin 是 opaque 的,

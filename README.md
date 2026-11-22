@@ -18,6 +18,8 @@ Keep **没有开放第三方接口**(官方不提供 API / OAuth,社区里的 ke
 
 **① 截图识别(推荐)**——点「选择截图 / 拍照识别」,选一张 Keep 运动记录的截图:
 
+> 装 APK 的话请用 **v1.2.0 及以上**:更早的版本里 WebView 没有接管网页的选文件请求,这两个按钮点了没反应(网页版 / 浏览器里不受影响)。相册走系统文件选择器,**不需要存储权限**;拍照只需要相机权限。
+
 - 用 [tesseract.js](https://github.com/naptha/tesseract.js) 在**手机本地**做 OCR,图片**不上传任何服务器**
 - 识别引擎、中文+英文语言包都打包在仓库 `vendor/tesseract/`(约 11MB),首次点用时加载一次,之后 Service Worker 缓存,离线也能用
 - 识别出的文字会填到输入框,**可以手动改**,再点「解析并导入」
@@ -56,7 +58,7 @@ Keep **没有开放第三方接口**(官方不提供 API / OAuth,社区里的 ke
 
 ## 安卓安装包(APK)
 
-Release 里提供 daily-fit-1.1.0.apk(约 6.5MB,minSdk 24 / Android 7.0+,targetSdk 34),
+Release 里提供 daily-fit-1.2.0.apk(约 6.5MB,minSdk 24 / Android 7.0+,targetSdk 34),
 安装后是独立 App,不用联网、不连服务器,数据只在本机。
 
 手机安装步骤:
@@ -84,6 +86,17 @@ Release 里提供 daily-fit-1.1.0.apk(约 6.5MB,minSdk 24 / Android 7.0+,targetS
 
 ## 更新日志
 
+### v1.2.0 (2026-11-22)
+
+- 修:**APK 里点「选择截图 / 拍照识别」毫无反应**(真机反馈的 bug)。
+  根因在安卓容器而不在网页:WebView 的默认 `WebChromeClient` 不实现 `onShowFileChooser`,
+  网页里 `<input type="file">` 的点击事件在 WebView 中被静默丢弃,所以按钮看着能按、实际什么都不发生。
+  修法:MainActivity 重写 `onShowFileChooser`,相册请求交给系统文件选择器(ACTION_GET_CONTENT / SAF),
+  `capture` 请求走 ACTION_IMAGE_CAPTURE;新增 `CacheFileProvider` 把照片目录暴露成 `content://com.mzx.dailyfit.files/…`,
+  规避 Android 7+ 的 FileUriExposedException;相机权限被拒时自动退化为文件选择器,不让按钮变成死键。
+- 改:网页版版本号 v1.2;文档补充「选图/拍照为什么需要 Java 代码」与新增的 Provider 类。
+- 说明:**不需要申请存储权限** —— 相册走系统文件选择器(SAF),App 拿到的只是你选中的那张图的临时读权限,
+  比「读取整个相册」更安全;只有拍照会弹相机权限。
 ### v1.1.0 (2026-11-22)
 
 - 修:手机上打开「饮食」页时整页被撑宽,底部四个 tab 里的「锻炼」被挤出屏幕。

@@ -62,6 +62,13 @@
       <ul class="item-list" id="item-list"></ul>
     </div>
 
+    <div class="card" id="confirm-card">
+      <div class="card-title">确认保存 <span class="hint">(逐项勾选,再确认)</span></div>
+      <label class="chk-row"><input type="checkbox" id="confirm-chk"><span>我已核对以上数据,确认保存</span></label>
+      <button class="save-btn confirm-btn" id="confirm-save" disabled>确认保存</button>
+      <div class="confirm-state" id="confirm-state">未确认</div>
+    </div>
+
     <div class="card">
       <div class="card-title">Keep 数据导入 <span class="hint">(截图识别 / 粘贴文字)</span></div>
       <div class="keep-pick">
@@ -88,6 +95,11 @@
         <div class="stat-box"><div class="stat-num" id="week-num">0</div><div class="stat-label">近7天(次)</div></div>
       </div>
       <div class="week-strip" id="week-strip"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">全部记录 <span class="hint" id="hist-count">0 天</span></div>
+      <div class="hist" id="hist-list"></div>
     </div>
   </section>
 
@@ -166,7 +178,7 @@
       <div class="set-note">数据仅保存在本机浏览器中,换手机请先导出备份。</div>
     </div>
 
-    <div class="about">每日 Fit · v1.1 · 本地离线优先</div>
+    <div class="about">每日 Fit · v1.2 · 本地离线优先</div>
   </section>
 
   <!-- ========== 页面4: 饮食记录 ========== -->
