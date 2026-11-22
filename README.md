@@ -44,6 +44,11 @@ Release 里提供 daily-fit-1.4.2.apk(约 70KB,Android 7.0+),安装后是独立 
 
 安卓源码在 [android/](android/),打包脚本见 [tools/build_apk.py](tools/build_apk.py) 与 [docs/BUILD_ANDROID.md](docs/BUILD_ANDROID.md)。
 
+## iPhone / iPad 安装
+
+用 **Safari** 打开 <https://mzx-mancity.github.io/daily-fit/> → 底部分享按钮 → **添加到主屏幕**,
+桌面就会出现橘色的「小橘爱运动」图标,全屏运行、离线可用。详细步骤见 [docs/INSTALL_IOS.md](docs/INSTALL_IOS.md)。
+
 ## 使用(网页版安装)
 
 1. 手机浏览器(Chrome / Edge / Safari)打开 Pages 地址
@@ -75,6 +80,14 @@ Release 里提供 daily-fit-1.4.2.apk(约 70KB,Android 7.0+),安装后是独立 
     tools/make_icons.py   图标生成脚本(Pillow)
 
 ## 更新日志
+
+### v1.4.4 (2026-11-22)
+
+- 加:**iPhone / iPad 完整支持**。补齐 iOS 全屏 Web App 所需的全部 meta(apple-mobile-web-app-capable /
+  apple-touch-icon / status-bar-style / format-detection),适配刘海屏与底部 Home 指示条的安全区,
+  新生成 180x180 的 iOS 专用桌面图标。iPhone 用 Safari 打开网页后「添加到主屏幕」即可获得和原生 App 一样的体验。
+  详见 docs/INSTALL_IOS.md。
+- 改:状态栏主题色统一为橘色 #f97316,和「小橘爱运动」一致。
 
 ### v1.4.3 (2026-11-22)
 

@@ -16,7 +16,9 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
   background:var(--bg);color:var(--text);
 }
-.app{max-width:480px;margin:0 auto;min-height:100dvh;padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+.app{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:calc(64px + env(safe-area-inset-bottom))}
 
 /* 页面切换 */
 .page{display:none;padding:12px 12px 20px;max-width:100%;animation:fade .18s ease}
@@ -202,3 +204,11 @@ body{
 
 .shake{animation:shake .3s}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* ---------- iOS「添加到主屏幕」全屏模式适配 ---------- */
+@media (display-mode: standalone) {
+  .app { padding-top: env(safe-area-inset-top); }
+  body { overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
+}
+/* iOS 上禁止长按图片/链接弹出菜单,避免误触 */
+body { -webkit-touch-callout: none; }
