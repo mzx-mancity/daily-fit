@@ -17,7 +17,7 @@ import sys
 import urllib.error
 import urllib.request
 
-REPO = os.environ.get("REPO", "mzx19159506939-del/daily-fit")
+REPO = os.environ.get("REPO", "mzx-mancity/daily-fit")
 DRY = "--dry" in sys.argv or os.environ.get("DRY_RUN") == "1"
 PAGES = os.environ.get("PAGES") == "1"
 FRESH = os.environ.get("FRESH") == "1"  # 忽略远端历史并强制覆盖主分支
@@ -41,8 +41,8 @@ def find_token():
 
 TOKEN = find_token()
 AUTHOR = {
-    "name": "mzx19159506939-del",
-    "email": "mzx19159506939-del@users.noreply.github.com",
+    "name": "mzx-mancity",
+    "email": "mzx-mancity@users.noreply.github.com",
 }
 
 

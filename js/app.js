@@ -311,9 +311,51 @@ function shiftMonth(delta) {
   const nowD = new Date();
   const inThisMonth = (y === nowD.getFullYear() && m === nowD.getMonth());
   viewDate = inThisMonth ? TODAY() : keyOf(new Date(y, m, 1));
+  cancelClear();
   renderAll();
 }
-let lastSwipeAt = 0;   /* 刚滑动翻月的时间戳,用来吃掉紧随其后的误触点击 */
+let swallowNextTap = false;   /* 刚滑动翻月:吃掉紧随其后的那一次点击(只吃一次) */
+let lastTapKey = '', lastTapAt = 0;  /* 双击检测:同一个日期 400ms 内点第二次 = 要清空 */
+let pendingClear = null;             /* 等待确认清空的日期 */
+
+/* ---------- 双击清空某天 ---------- */
+function askClear(k) {
+  const day = DB.days[k];
+  if (!dayHasLog(day)) {
+    pendingClear = null;
+    $('cal-clear').hidden = true;
+    return false;
+  }
+  pendingClear = k;
+  const d = fromKey(k);
+  $('cal-clear-text').textContent = '清空 ' + (d.getMonth() + 1) + '月' + d.getDate() + '日 的记录?';
+  $('cal-clear').hidden = false;
+  return true;
+}
+
+function doClear() {
+  if (!pendingClear) return;
+  const k = pendingClear;
+  const day = DB.days[k];
+  pendingClear = null;
+  $('cal-clear').hidden = true;
+  if (!day) { renderAll(); return; }
+  delete day.type;
+  delete day.items;
+  delete day.confirmed;
+  delete day.confirmedAt;
+  delete day.dirty;
+  /* 喝水是独立数据,清空打卡时保留;整天都没内容了才把这条记录删掉 */
+  const left = Object.keys(day).filter(x => x !== 'cups' && x !== 'cupTimes');
+  if (!left.length && !day.cups) delete DB.days[k];
+  save();
+  renderAll();
+}
+
+function cancelClear() {
+  pendingClear = null;
+  $('cal-clear').hidden = true;
+}
 
 function pickDate(k) {
   viewDate = k;
@@ -328,11 +370,24 @@ $('cal-prev').addEventListener('click', () => shiftMonth(-1));
 $('cal-next').addEventListener('click', () => shiftMonth(1));
 $('cal-today').addEventListener('click', goToday);
 $('cal-grid').addEventListener('click', e => {
-  if (Date.now() - lastSwipeAt < 400) return;       /* 滑动翻月后不要顺手选中某天 */
+  if (swallowNextTap) { swallowNextTap = false; return; }   /* 滑动翻月后不要顺手选中某天 */
   const b = e.target.closest('.cal-day');
   if (!b || !b.dataset.k) return;
-  pickDate(b.dataset.k);
+  const k = b.dataset.k;
+  const now = Date.now();
+  if (k === lastTapKey && now - lastTapAt < 400) {   /* 双击:清空这一天 */
+    lastTapKey = ''; lastTapAt = 0;
+    pickDate(k);
+    askClear(k);
+    return;
+  }
+  lastTapKey = k; lastTapAt = now;
+  cancelClear();
+  pickDate(k);
 });
+
+$('cal-clear-ok').addEventListener('click', doClear);
+$('cal-clear-cancel').addEventListener('click', cancelClear);
 
 /* 左右滑动切换月份 */
 (function bindSwipe() {
@@ -348,7 +403,7 @@ $('cal-grid').addEventListener('click', e => {
     const dx = e.changedTouches[0].clientX - sx;
     const dy = e.changedTouches[0].clientY - sy;
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      lastSwipeAt = Date.now();
+      swallowNextTap = true;
       shiftMonth(dx > 0 ? -1 : 1);
     }
   }, { passive: true });

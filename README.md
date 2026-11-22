@@ -1,6 +1,6 @@
 # 每日 Fit · 锻炼打卡
 
-> 在线试用:<https://mzx19159506939-del.github.io/daily-fit/> ｜ 安卓安装包:[Releases](https://github.com/mzx19159506939-del/daily-fit/releases/latest)
+> 在线试用:<https://mzx-mancity.github.io/daily-fit/> ｜ 安卓安装包:[Releases](https://github.com/mzx-mancity/daily-fit/releases/latest)
 
 一款**本地离线优先**的手机锻炼打卡 App:日历回看每天练了什么,支持有氧 / 无氧 / 休息日、自定义项目、
 逐项勾选与确认保存,另有喝水和 BMI。无需注册、无需服务器,数据只存在你手机本地的存储里。
@@ -32,7 +32,7 @@
 
 ## 安卓安装包(APK)
 
-Release 里提供 daily-fit-1.4.0.apk(约 5.5MB,Android 7.0+),安装后是独立 App,不用联网。
+Release 里提供 daily-fit-1.4.1.apk(约 70KB,Android 7.0+),安装后是独立 App,不用联网。
 
 1. 下载 APK 到手机(微信/QQ 传文件可能改名,建议浏览器下载或数据线拷贝)
 2. 点击安装 → 提示「未知来源应用」时允许
@@ -75,6 +75,14 @@ Release 里提供 daily-fit-1.4.0.apk(约 5.5MB,Android 7.0+),安装后是独立
     tools/make_icons.py   图标生成脚本(Pillow)
 
 ## 更新日志
+
+### v1.4.1 (2026-11-22)
+
+- 加:**双击日历上有颜色的日期,可以清空那天的记录**(类型 / 项目 / 确认状态一起清掉,颜色随之消失)。
+  双击后日历下方会弹出「清空 11月23日 的记录?」确认条,点「清空」才真正删除,点「取消」什么都不变;
+  没记录的空白日期双击不会有反应,喝水数据也不会被清空(喝水是独立记录)。
+- 修:滑动翻月后误触选中某天 —— 现在只吃掉滑动之后的那一次点击,不影响后续正常操作。
+- 改:仓库地址换成新用户名 mzx-mancity(GitHub Pages 同步为 https://mzx-mancity.github.io/daily-fit/ )。
 
 ### v1.4.0 (2026-11-22)
 

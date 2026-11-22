@@ -1,5 +1,5 @@
 /* 每日 Fit Service Worker — app shell 缓存,离线可用(网络优先,断网回落缓存) */
-const CACHE = 'dailyfit-v6';
+const CACHE = 'dailyfit-v7';
 const ASSETS = [
   './',
   './index.html',
