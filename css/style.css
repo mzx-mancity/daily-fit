@@ -8,6 +8,8 @@
   --radius:16px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* touch-action:manipulation 去掉浏览器为"双击缩放"预留的 300ms 点击延迟,点按立刻响应 */
+button,.cal-day,.tab,.chip,.type-btn{touch-action:manipulation;-webkit-user-select:none;user-select:none}
 html,body{height:100%;max-width:100%;overflow-x:hidden}
 input,textarea,select{min-width:0}
 body{
@@ -36,7 +38,7 @@ body{
 .cal-card{padding:12px 10px 10px}
 .cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
 .cal-week span{text-align:center;font-size:12px;color:var(--gray);padding:2px 0}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;touch-action:manipulation}
 .cal-day{position:relative;aspect-ratio:1/1;border:none;background:#fafafa;border-radius:10px;
   display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
 .cal-day.blank{background:transparent;cursor:default}
@@ -62,13 +64,14 @@ body{
 .cal-today{margin-left:6px;border:none;background:var(--green-bg);color:var(--green-dark);
   font-size:12px;font-weight:600;border-radius:999px;padding:4px 12px;cursor:pointer}
 .cal-tip{text-align:center;font-size:11px;color:#9ca3af;margin-top:6px}
-.cal-clear{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;
-  background:#fef2f2;border:1px solid #fecaca;border-radius:10px}
-.cal-clear-text{flex:1 1 0;min-width:0;font-size:12px;color:#b91c1c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cal-clear-btn{border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;flex:none}
-.cal-clear-btn.cancel{background:#fff;color:var(--gray);border:1px solid var(--line)}
-.cal-clear-btn.ok{background:#ef4444;color:#fff}
-.cal-clear-btn.ok:active{background:#dc2626}
+.day-clear{border:1px solid #fecaca;background:#fef2f2;color:#dc2626;font-size:12px;font-weight:600;
+  border-radius:999px;padding:5px 12px;cursor:pointer;flex:none}
+.day-clear:active{background:#fee2e2}
+.snack{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom));
+  width:calc(100% - 28px);max-width:452px;display:flex;align-items:center;gap:10px;z-index:20;
+  background:rgba(31,41,55,.94);color:#fff;border-radius:12px;padding:11px 14px;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.snack-text{flex:1 1 0;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.snack-btn{border:none;background:transparent;color:#fbbf24;font-size:13px;font-weight:700;cursor:pointer;flex:none;padding:2px 4px}
 
 /* 选中日标题条 */
 .day-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 8px}

@@ -218,8 +218,8 @@ ok(css.indexOf('left:0;right:0') !== -1, 'C45 tabbar 用 left/right 定位');
 ok(html.indexOf('page-diet') === -1 && html.indexOf('饮食') === -1, 'C46 饮食页已删除');
 ok(html.indexOf('Keep') === -1 && html.indexOf('keep-') === -1, 'C47 Keep 相关已删除');
 ok(html.indexOf('cal-grid') !== -1 && html.indexOf('data-page="water"') !== -1, 'C48 三 Tab + 日历结构');
-ok(/dailyfit-v8/.test(sw), 'C49 SW 缓存版本 v8');
-ok(html.indexOf('v1.4.2') !== -1, 'C50 版本号 v1.4.2');
+ok(/dailyfit-v10/.test(sw), 'C49 SW 缓存版本 v10');
+ok(html.indexOf('v1.4.3') !== -1, 'C50 版本号 v1.4.3');
 ok(html.indexOf('小橘爱运动') !== -1, 'C73 网页标题/底部已改名');
 const mf = JSON.parse(fs.readFileSync('manifest.webmanifest', 'utf8'));
 ok(mf.name === '小橘爱运动' && mf.short_name === '小橘爱运动', 'C74 PWA 名称=小橘爱运动');
@@ -277,11 +277,11 @@ const dump2 = DBd();
 ok(typeof dump2.days === 'object' && typeof dump2.profile === 'object' && Array.isArray(dump2.profile.weightLog), 'C60 数据结构完整');
 
 
-/* ---- 双击清空某天 ---- */
+/* ---- 一键清空 + 撤销 ---- */
 const ck = keyOf(new Date(now.getFullYear(), now.getMonth(), Math.min(28, now.getDate() + 1)));
 
-advance(2000);                                    /* 和上一次点击拉开时间 */
-fireT(el('cal-grid'), 'click', calDayTarget(ck)); /* 单击:选中这天 */
+advance(2000);
+fireT(el('cal-grid'), 'click', calDayTarget(ck));
 fire(typeBtns[0], 'click');
 fire(chips[0], 'click');
 el('confirm-chk').checked = true; fire(el('confirm-chk'), 'change');
@@ -289,68 +289,57 @@ fire(el('confirm-save'), 'click');
 ok(!!(DBd().days[ck] && DBd().days[ck].type === 'cardio' && DBd().days[ck].confirmed === true), 'C61 准备一条已确认记录');
 sandbox.renderAll();
 ok(el('cal-grid').innerHTML.indexOf('t-cardio') !== -1, 'C62 日历格子已有色');
+ok(el('day-clear').hidden === false, 'C63 有记录时「清空」按钮出现');
 
-/* 单击(隔开时间):只选中,不弹确认 */
+/* 切到没记录的一天:按钮自动隐藏 */
+advance(2000);
+fireT(el('cal-grid'), 'click', calDayTarget(keyOf(new Date(now.getFullYear(), now.getMonth(), 26))));
+ok(el('day-clear').hidden === true, 'C64 切到无记录日按钮隐藏');
+
+/* 回到有记录的这天,清空 */
 advance(2000);
 fireT(el('cal-grid'), 'click', calDayTarget(ck));
-ok(el('cal-clear').hidden === true, 'C63 单击不弹清空确认');
-
-/* 紧接着再点一次(400ms 内)= 双击 */
-advance(120);
-fireT(el('cal-grid'), 'click', calDayTarget(ck));
-ok(el('cal-clear').hidden === false, 'C64 双击弹出清空确认');
-ok(el('cal-clear-text').textContent.indexOf('清空') === 0, 'C65 确认条文案(' + el('cal-clear-text').textContent + ')');
-
-/* 取消:数据不动 */
-fire(el('cal-clear-cancel'), 'click');
-ok(el('cal-clear').hidden === true && DBd().days[ck].type === 'cardio', 'C66 取消后数据保留');
-
-/* 再双击 -> 清空 */
-advance(2000);
-fireT(el('cal-grid'), 'click', calDayTarget(ck));
-advance(120);
-fireT(el('cal-grid'), 'click', calDayTarget(ck));
-fire(el('cal-clear-ok'), 'click');
+fire(el('day-clear'), 'click');
 const after = DBd().days[ck] || {};
-ok(!after.type && !after.items && !after.confirmed, 'C67 清空后类型/项目/确认都移除');
-sandbox.renderAll();
+ok(!after.type && !after.items && !after.confirmed, 'C65 一键清空:类型/项目/确认都移除');
 const cellOf = (k) => {
   const m = el('cal-grid').innerHTML.match(new RegExp('<button class="([^"]*)" data-k="' + k + '"'));
-  return m ? m[1] : '(not found)';
+  return m ? m[1] : '(missing)';
 };
-ok(cellOf(ck).indexOf('t-cardio') === -1 && cellOf(ck).indexOf('cal-ok') === -1, 'C68 该日颜色与✓都消失(' + cellOf(ck) + ')');
+ok(cellOf(ck).indexOf('t-cardio') === -1 && cellOf(ck).indexOf('cal-ok') === -1, 'C66 该日颜色与✓都消失(' + cellOf(ck) + ')');
+ok(el('snack').hidden === false && el('snack-text').textContent.indexOf('已清空') === 0, 'C67 出现撤销提示(' + el('snack-text').textContent + ')');
 
-/* 清空保留喝水数据:全部通过界面操作完成 */
+/* 撤销:整条记录回来 */
+fire(el('snack-undo'), 'click');
+ok(!!(DBd().days[ck] && DBd().days[ck].type === 'cardio' && DBd().days[ck].confirmed === true), 'C68 撤销后记录恢复');
+ok(DBd().days[ck].items.length === 1, 'C69 撤销后项目也恢复');
+ok(el('snack-text').textContent === '已撤销', 'C70 提示已撤销');
+
+/* 清空保留喝水 */
 advance(2000);
 fireT(el('cal-grid'), 'click', calDayTarget(today));
 const cupsBefore = ((DBd().days[today] || {}).cups) || 0;
-fire(el('cup-plus'), 'click');              /* 记 3 杯水 */
-fire(el('cup-plus'), 'click');
-fire(el('cup-plus'), 'click');
-if (!(DBd().days[today] || {}).type) fire(typeBtns[1], 'click');   /* 确保这天有类型 */
-ok(!!DBd().days[today].type && Math.abs(DBd().days[today].cups - (cupsBefore + 3)) < 1e-6,
-   'C69a 准备:有类型 + 喝了 3 杯(' + cupsBefore + '→' + DBd().days[today].cups + ')');
-advance(2000);
+fire(el('cup-plus'), 'click'); fire(el('cup-plus'), 'click');
+if (!(DBd().days[today] || {}).type) fire(typeBtns[1], 'click');
 fireT(el('cal-grid'), 'click', calDayTarget(today));
-advance(120);
-fireT(el('cal-grid'), 'click', calDayTarget(today));
-fire(el('cal-clear-ok'), 'click');
-ok(Math.abs(((DBd().days[today] || {}).cups) - (cupsBefore + 3)) < 1e-6,
-   'C69 清空打卡不影响喝水杯数(还剩 ' + ((DBd().days[today] || {}).cups) + ' 杯)');
-ok(!(DBd().days[today] || {}).type, 'C70 清空后类型已移除');
+fire(el('day-clear'), 'click');
+ok(Math.abs(((DBd().days[today] || {}).cups) - (cupsBefore + 2)) < 1e-6, 'C71 清空不影响喝水(' + ((DBd().days[today] || {}).cups) + ' 杯)');
+ok(!(DBd().days[today] || {}).type, 'C72 清空后类型已移除');
 
-/* 没记录的日期双击:不弹确认 */
-const empty = keyOf(new Date(now.getFullYear(), now.getMonth(), Math.min(28, now.getDate() + 2)));
-delete DBd().days[empty];
-store['fitlog_v1'] = JSON.stringify(DBd());
+/* 切换日期只看不重建整月:实测主流程不依赖整月重建(stub 无 querySelectorAll 时回退重建仍正确) */
 advance(2000);
-fireT(el('cal-grid'), 'click', calDayTarget(empty));
-advance(120);
-fireT(el('cal-grid'), 'click', calDayTarget(empty));
-ok(el('cal-clear').hidden === true, 'C71 空白日期双击不弹确认');
+fireT(el('cal-grid'), 'click', calDayTarget(ck));
+ok(el('day-title').textContent.indexOf((fromKeyCK(ck).getMonth() + 1) + '月' + fromKeyCK(ck).getDate() + '日') === 0, 'C73 点日期立刻切换标题(' + el('day-title').textContent + ')');
 
-/* 提示文案 + 结构 */
-ok(fs.readFileSync('index.html', 'utf8').indexOf('双击有颜色的日期可清空') !== -1, 'C72 页面上有双击提示');
+function fromKeyCK(k) { const a = k.split('-').map(Number); return new Date(a[0], a[1] - 1, a[2]); }
+
+/* 结构 */
+const swTxt = fs.readFileSync('sw.js', 'utf8');
+ok(swTxt.indexOf('dailyfit-v10') !== -1, 'C74 SW 缓存版本 v10');
+ok(fs.readFileSync('index.html', 'utf8').indexOf('cal-clear') === -1, 'C75 旧的日历内确认条已移除');
+ok(fs.readFileSync('css/style.css', 'utf8').indexOf('touch-action:manipulation') !== -1, 'C77 已加 touch-action 消除点击延迟');
+/* 提示文案 */
+ok(fs.readFileSync('index.html', 'utf8').indexOf('点日期看当天记录') !== -1, 'C76 页面上有新提示文案');
 
 if (fails.length) { console.log('SMOKE FAILED:', fails.join('; ')); process.exit(1); }
 console.log('SMOKE ALL PASS (' + n + ' checks)');

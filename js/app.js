@@ -150,6 +150,9 @@ function renderDay() {
     cp.hidden = true;
   }
 
+  const clr = $('day-clear');
+  if (clr) clr.hidden = !dayHasLog(day);
+
   renderConfirm(day, type);
 }
 
@@ -311,58 +314,33 @@ function shiftMonth(delta) {
   const nowD = new Date();
   const inThisMonth = (y === nowD.getFullYear() && m === nowD.getMonth());
   viewDate = inThisMonth ? TODAY() : keyOf(new Date(y, m, 1));
-  cancelClear();
+  hideSnack();
   renderAll();
 }
+
 let swallowNextTap = false;   /* 刚滑动翻月:吃掉紧随其后的那一次点击(只吃一次) */
-let lastTapKey = '', lastTapAt = 0;  /* 双击检测:同一个日期 400ms 内点第二次 = 要清空 */
-let pendingClear = null;             /* 等待确认清空的日期 */
 
-/* ---------- 双击清空某天 ---------- */
-function askClear(k) {
-  const day = DB.days[k];
-  if (!dayHasLog(day)) {
-    pendingClear = null;
-    $('cal-clear').hidden = true;
-    return false;
+/* ---------- 点日期:立刻选中,不做重建(响应要快) ---------- */
+/* 只切换选中格子的 class,不重排整月;切换月份才重建网格 */
+function markSelection() {
+  const grid = $('cal-grid');
+  if (!grid || typeof grid.querySelectorAll !== 'function') { renderCalendar(); return; }
+  const cells = grid.querySelectorAll('.cal-day[data-k]');
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i];
+    const on = c.dataset.k === viewDate;
+    if (c.classList.contains('sel') !== on) c.classList.toggle('sel', on);
   }
-  pendingClear = k;
-  const d = fromKey(k);
-  $('cal-clear-text').textContent = '清空 ' + (d.getMonth() + 1) + '月' + d.getDate() + '日 的记录?';
-  $('cal-clear').hidden = false;
-  return true;
-}
-
-function doClear() {
-  if (!pendingClear) return;
-  const k = pendingClear;
-  const day = DB.days[k];
-  pendingClear = null;
-  $('cal-clear').hidden = true;
-  if (!day) { renderAll(); return; }
-  delete day.type;
-  delete day.items;
-  delete day.confirmed;
-  delete day.confirmedAt;
-  delete day.dirty;
-  /* 喝水是独立数据,清空打卡时保留;整天都没内容了才把这条记录删掉 */
-  const left = Object.keys(day).filter(x => x !== 'cups' && x !== 'cupTimes');
-  if (!left.length && !day.cups) delete DB.days[k];
-  save();
-  renderAll();
-}
-
-function cancelClear() {
-  pendingClear = null;
-  $('cal-clear').hidden = true;
 }
 
 function pickDate(k) {
-  viewDate = k;
   const d = fromKey(k);
+  const monthChanged = (d.getFullYear() !== calY || d.getMonth() !== calM);
+  viewDate = k;
   calY = d.getFullYear(); calM = d.getMonth();
-  renderAll();
-  window.scrollTo({ top: 0 });
+  if (monthChanged) renderCalendar(); else markSelection();
+  renderDay();
+  hideSnack();
 }
 function goToday() { pickDate(TODAY()); }
 
@@ -373,21 +351,58 @@ $('cal-grid').addEventListener('click', e => {
   if (swallowNextTap) { swallowNextTap = false; return; }   /* 滑动翻月后不要顺手选中某天 */
   const b = e.target.closest('.cal-day');
   if (!b || !b.dataset.k) return;
-  const k = b.dataset.k;
-  const now = Date.now();
-  if (k === lastTapKey && now - lastTapAt < 400) {   /* 双击:清空这一天 */
-    lastTapKey = ''; lastTapAt = 0;
-    pickDate(k);
-    askClear(k);
-    return;
-  }
-  lastTapKey = k; lastTapAt = now;
-  cancelClear();
-  pickDate(k);
+  pickDate(b.dataset.k);
 });
 
-$('cal-clear-ok').addEventListener('click', doClear);
-$('cal-clear-cancel').addEventListener('click', cancelClear);
+/* ---------- 清空某天:一键完成 + 5 秒内可撤销 ---------- */
+let undoState = null;    /* { key, snapshot, hadDay } */
+let snackTimer = 0;
+
+function showSnack(text, undoable) {
+  $('snack-text').textContent = text;
+  $('snack').hidden = false;
+  $('snack-undo').hidden = !undoable;
+  if (snackTimer) clearTimeout(snackTimer);
+  snackTimer = setTimeout(hideSnack, 5000);
+}
+function hideSnack() {
+  if (snackTimer) { clearTimeout(snackTimer); snackTimer = 0; }
+  $('snack').hidden = true;
+}
+
+function clearDay(k) {
+  const day = DB.days[k];
+  if (!dayHasLog(day)) { showSnack('这天还没有记录', false); return false; }
+  undoState = { key: k, snapshot: JSON.parse(JSON.stringify(day)), hadDay: true };
+  delete day.type;
+  delete day.items;
+  delete day.confirmed;
+  delete day.confirmedAt;
+  delete day.dirty;
+  /* 喝水是独立数据,清空打卡时保留;整天都没内容了才把这条记录删掉 */
+  const left = Object.keys(day).filter(x => x !== 'cups' && x !== 'cupTimes');
+  if (!left.length && !day.cups) delete DB.days[k];
+  save();
+  renderCalendar();
+  renderDay();
+  const d = fromKey(k);
+  showSnack('已清空 ' + (d.getMonth() + 1) + '月' + d.getDate() + '日 的记录', true);
+  return true;
+}
+
+function undoClear() {
+  if (!undoState) return;
+  const st = undoState;
+  undoState = null;
+  if (st.hadDay) DB.days[st.key] = st.snapshot;
+  save();
+  renderCalendar();
+  renderDay();
+  showSnack('已撤销', false);
+}
+
+$('day-clear').addEventListener('click', () => clearDay(viewDate));
+$('snack-undo').addEventListener('click', undoClear);
 
 /* 左右滑动切换月份 */
 (function bindSwipe() {

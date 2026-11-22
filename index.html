@@ -45,17 +45,13 @@
         <span id="cal-month-count">本月 0 天</span>
         <button class="cal-today" id="cal-today">回到今天</button>
       </div>
-      <div class="cal-tip">双击有颜色的日期可清空</div>
-      <div class="cal-clear" id="cal-clear" hidden>
-        <span class="cal-clear-text" id="cal-clear-text">清空这天的记录?</span>
-        <button class="cal-clear-btn cancel" id="cal-clear-cancel">取消</button>
-        <button class="cal-clear-btn ok" id="cal-clear-ok">清空</button>
-      </div>
+      <div class="cal-tip">点日期看当天记录,右上角可清空</div>
     </div>
 
     <div class="day-bar">
       <div class="day-bar-main" id="day-title">11月22日 · 周六</div>
       <div class="day-bar-tag" id="day-tag">未记录</div>
+      <button class="day-clear" id="day-clear" hidden>清空</button>
     </div>
 
     <div class="card">
@@ -176,8 +172,14 @@
       <div class="set-note">数据仅保存在本机,换手机请先导出备份。</div>
     </div>
 
-    <div class="about">小橘爱运动 · v1.4.2 · 本地离线优先</div>
+    <div class="about">小橘爱运动 · v1.4.3 · 本地离线优先</div>
   </section>
+
+  <!-- 撤销提示 -->
+  <div class="snack" id="snack" hidden>
+    <span class="snack-text" id="snack-text"></span>
+    <button class="snack-btn" id="snack-undo">撤销</button>
+  </div>
 
   <!-- 底部导航 -->
   <nav class="tabbar">
