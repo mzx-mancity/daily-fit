@@ -1,5 +1,5 @@
 'use strict';
-/* 每日 Fit · 锻炼打卡 — 本地离线优先,数据存 localStorage */
+/* 小橘爱运动 · 锻炼打卡 — 本地离线优先,数据存 localStorage */
 
 /* ---------- 存储 ---------- */
 const KEY = 'fitlog_v1';

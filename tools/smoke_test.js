@@ -218,8 +218,12 @@ ok(css.indexOf('left:0;right:0') !== -1, 'C45 tabbar 用 left/right 定位');
 ok(html.indexOf('page-diet') === -1 && html.indexOf('饮食') === -1, 'C46 饮食页已删除');
 ok(html.indexOf('Keep') === -1 && html.indexOf('keep-') === -1, 'C47 Keep 相关已删除');
 ok(html.indexOf('cal-grid') !== -1 && html.indexOf('data-page="water"') !== -1, 'C48 三 Tab + 日历结构');
-ok(/dailyfit-v7/.test(sw), 'C49 SW 缓存版本 v7');
-ok(html.indexOf('v1.4.1') !== -1, 'C50 版本号 v1.4.1');
+ok(/dailyfit-v8/.test(sw), 'C49 SW 缓存版本 v8');
+ok(html.indexOf('v1.4.2') !== -1, 'C50 版本号 v1.4.2');
+ok(html.indexOf('小橘爱运动') !== -1, 'C73 网页标题/底部已改名');
+const mf = JSON.parse(fs.readFileSync('manifest.webmanifest', 'utf8'));
+ok(mf.name === '小橘爱运动' && mf.short_name === '小橘爱运动', 'C74 PWA 名称=小橘爱运动');
+ok(fs.readFileSync('android/res/values/strings.xml', 'utf8').indexOf('<string name="app_name">小橘爱运动</string>') !== -1, 'C75 安卓桌面名=小橘爱运动');
 
 
 /* ---- 新增行为:切月选中 / 连续天数 / 改动重置勾选 / 滑动抑制 / 喝水文案 ---- */

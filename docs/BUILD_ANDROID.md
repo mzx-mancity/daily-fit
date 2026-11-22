@@ -39,7 +39,7 @@ python tools/build_apk.py --sdk D:/android-sdk --version-name 1.4.0 --version-co
 android/
   AndroidManifest.xml     清单(包名 com.mzx.dailyfit,minSdk 24,targetSdk 34)
   java/com/mzx/dailyfit/MainActivity.java   30 多行的 WebView 外壳
-  res/values/{strings,styles}.xml           应用名「轻记健身」与主题
+  res/values/{strings,styles}.xml           应用名「小橘爱运动」与主题
   res/mipmap-*/ic_launcher.png              启动图标
 tools/build_apk.py        打包脚本
 build_android/            构建中间产物(可随时删)

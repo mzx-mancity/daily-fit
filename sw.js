@@ -1,5 +1,5 @@
-/* 每日 Fit Service Worker — app shell 缓存,离线可用(网络优先,断网回落缓存) */
-const CACHE = 'dailyfit-v7';
+/* 小橘爱运动 Service Worker — app shell 缓存,离线可用(网络优先,断网回落缓存) */
+const CACHE = 'dailyfit-v8';
 const ASSETS = [
   './',
   './index.html',

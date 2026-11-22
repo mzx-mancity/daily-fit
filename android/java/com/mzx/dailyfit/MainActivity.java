@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 轻记健身 —— 把 daily-fit 这个离线网页装进 WebView。
+ * 小橘爱运动 —— 把 daily-fit 这个离线网页装进 WebView。
  *
  * 资源不走 file://(file 源是 opaque origin,localStorage 等都会受限),
  * 而是把 https://appassets.androidplatform.net/ 映射到 APK 内的 assets/public/,

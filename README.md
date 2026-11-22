@@ -1,4 +1,4 @@
-# 每日 Fit · 锻炼打卡
+# 小橘爱运动 · 锻炼打卡
 
 > 在线试用:<https://mzx-mancity.github.io/daily-fit/> ｜ 安卓安装包:[Releases](https://github.com/mzx-mancity/daily-fit/releases/latest)
 
@@ -32,11 +32,11 @@
 
 ## 安卓安装包(APK)
 
-Release 里提供 daily-fit-1.4.1.apk(约 70KB,Android 7.0+),安装后是独立 App,不用联网。
+Release 里提供 daily-fit-1.4.2.apk(约 70KB,Android 7.0+),安装后是独立 App(桌面名字是「小橘爱运动」),不用联网。
 
 1. 下载 APK 到手机(微信/QQ 传文件可能改名,建议浏览器下载或数据线拷贝)
 2. 点击安装 → 提示「未知来源应用」时允许
-3. 打开「轻记健身」即可
+3. 打开「小橘爱运动」即可
 
 > APK 就是把同一套网页资源装进 WebView 的容器:资源通过 `https://appassets.androidplatform.net/`
 > 映射到 APK 内的 `assets/public/`,所以 localStorage、Canvas 都照常工作。
@@ -75,6 +75,12 @@ Release 里提供 daily-fit-1.4.1.apk(约 70KB,Android 7.0+),安装后是独立 
     tools/make_icons.py   图标生成脚本(Pillow)
 
 ## 更新日志
+
+### v1.4.2 (2026-11-22)
+
+- 改:**应用改名为「小橘爱运动」** —— 网页标题、添加到主屏幕后的名字、安卓桌面的应用名都换掉了;
+  图标同步换成**橘色底 + 白色杠铃**,和名字对上。
+- 说明:安卓包名仍是 com.mzx.dailyfit(改包名会让系统当成另一个应用,旧数据读不到),所以升级安装不会有问题。
 
 ### v1.4.1 (2026-11-22)
 
