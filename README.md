@@ -1,9 +1,21 @@
 # 小橘爱运动 · 锻炼打卡
 
-> 在线试用:<https://mzx-mancity.github.io/daily-fit/> ｜ 安卓安装包:[Releases](https://github.com/mzx-mancity/daily-fit/releases/latest)
+> 网页版 / 苹果安装:<https://mzx-mancity.github.io/daily-fit/>  
+> 安卓最新版(固定地址,每次更新都覆盖它):<https://mzx-mancity.github.io/daily-fit/download/latest.apk>  
+> 一页看完的说明:[docs/USAGE.md](docs/USAGE.md)
 
 一款**本地离线优先**的手机锻炼打卡 App:日历回看每天练了什么,支持有氧 / 无氧 / 休息日、自定义项目、
 逐项勾选与确认保存,另有喝水和 BMI。无需注册、无需服务器,数据只存在你手机本地的存储里。
+
+## 快速安装
+
+| 平台 | 怎么装 |
+| --- | --- |
+| **安卓** | 手机浏览器打开 <https://mzx-mancity.github.io/daily-fit/download/latest.apk> 下载安装(允许未知来源) |
+| **iPhone / iPad** | Safari 打开 <https://mzx-mancity.github.io/daily-fit/> → 底部分享按钮 → **添加到主屏幕** |
+| **电脑 / 任意浏览器** | 直接打开 <https://mzx-mancity.github.io/daily-fit/> |
+
+遇到问题看 [docs/USAGE.md](docs/USAGE.md)(含常见问题、备份迁移)。
 
 ## 功能
 
@@ -80,6 +92,14 @@ Release 里提供 daily-fit-1.4.2.apk(约 70KB,Android 7.0+),安装后是独立 
     tools/make_icons.py   图标生成脚本(Pillow)
 
 ## 更新日志
+
+### v1.4.6 (2026-11-22)
+
+- 加:**使用说明文档** `docs/USAGE.md`(简介 + 安卓/苹果安装 + 常见问题 + 备份迁移),
+  README 顶部增加「快速安装」表格。
+- 改:**安卓下载地址固定为** `https://mzx-mancity.github.io/daily-fit/download/latest.apk`,
+  以后每次发版都覆盖同一个 `latest.apk`,链接永远指向最新版,不用再改。
+- 加:App「我的」页底部加「使用说明 / 安装教程」入口。
 
 ### v1.4.5 (2026-11-22)
 

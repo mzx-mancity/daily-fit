@@ -192,7 +192,9 @@ body{
 .wlist .wdate{color:var(--gray)}
 .wlist .wkg{font-weight:700}
 .backup-row{display:flex;gap:10px;margin-bottom:8px}
-.about{text-align:center;color:#9ca3af;font-size:12px;margin:8px 0 4px}
+.about{text-align:center;color:#9ca3af;font-size:12px;margin:8px 0 4px;line-height:1.7}
+.about-link{color:var(--green-dark);text-decoration:none;font-weight:600}
+.about-link:active{opacity:.6}
 
 /* 底部导航 */
 .tabbar{position:fixed;bottom:0;left:0;right:0;margin:0 auto;width:100%;max-width:480px;display:flex;

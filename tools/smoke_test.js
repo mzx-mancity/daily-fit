@@ -218,8 +218,8 @@ ok(css.indexOf('left:0;right:0') !== -1, 'C45 tabbar 用 left/right 定位');
 ok(html.indexOf('page-diet') === -1 && html.indexOf('饮食') === -1, 'C46 饮食页已删除');
 ok(html.indexOf('Keep') === -1 && html.indexOf('keep-') === -1, 'C47 Keep 相关已删除');
 ok(html.indexOf('cal-grid') !== -1 && html.indexOf('data-page="water"') !== -1, 'C48 三 Tab + 日历结构');
-ok(/dailyfit-v12/.test(sw), 'C49 SW 缓存版本 v12');
-ok(html.indexOf('v1.4.5') !== -1, 'C50 版本号 v1.4.5');
+ok(/dailyfit-v13/.test(sw), 'C49 SW 缓存版本 v13');
+ok(html.indexOf('v1.4.6') !== -1, 'C50 版本号 v1.4.6');
 ok(html.indexOf('小橘爱运动') !== -1, 'C73 网页标题/底部已改名');
 ok(html.indexOf('apple-mobile-web-app-capable') !== -1 && html.indexOf('apple-touch-icon') !== -1, 'C78 iOS 全屏 Web App meta 齐全');
 ok(html.indexOf('format-detection') !== -1, 'C79 iOS 电话号误识别已禁用');
@@ -338,7 +338,7 @@ function fromKeyCK(k) { const a = k.split('-').map(Number); return new Date(a[0]
 
 /* 结构 */
 const swTxt = fs.readFileSync('sw.js', 'utf8');
-ok(swTxt.indexOf('dailyfit-v12') !== -1, 'C74 SW 缓存版本 v12');
+ok(swTxt.indexOf('dailyfit-v13') !== -1, 'C74 SW 缓存版本 v13');
 ok(fs.readFileSync('index.html', 'utf8').indexOf('cal-clear') === -1, 'C75 旧的日历内确认条已移除');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('touch-action:manipulation') !== -1, 'C77 已加 touch-action 消除点击延迟');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('display-mode: standalone') !== -1, 'C80 iOS 独立 App 模式样式存在');
