@@ -56,6 +56,12 @@
       <button class="day-clear" id="day-clear" hidden>清空</button>
     </div>
 
+    <!-- 撤销提示:只在锻炼页、且刚清空后出现 -->
+    <div class="snack" id="snack" hidden>
+      <span class="snack-text" id="snack-text"></span>
+      <button class="snack-btn" id="snack-undo">撤销</button>
+    </div>
+
     <div class="card">
       <div class="card-title">这天练什么</div>
       <div class="type-row">
@@ -174,14 +180,8 @@
       <div class="set-note">数据仅保存在本机,换手机请先导出备份。</div>
     </div>
 
-    <div class="about">小橘爱运动 · v1.4.4 · 本地离线优先</div>
+    <div class="about">小橘爱运动 · v1.4.5 · 本地离线优先</div>
   </section>
-
-  <!-- 撤销提示 -->
-  <div class="snack" id="snack" hidden>
-    <span class="snack-text" id="snack-text"></span>
-    <button class="snack-btn" id="snack-undo">撤销</button>
-  </div>
 
   <!-- 底部导航 -->
   <nav class="tabbar">

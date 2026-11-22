@@ -218,8 +218,8 @@ ok(css.indexOf('left:0;right:0') !== -1, 'C45 tabbar 用 left/right 定位');
 ok(html.indexOf('page-diet') === -1 && html.indexOf('饮食') === -1, 'C46 饮食页已删除');
 ok(html.indexOf('Keep') === -1 && html.indexOf('keep-') === -1, 'C47 Keep 相关已删除');
 ok(html.indexOf('cal-grid') !== -1 && html.indexOf('data-page="water"') !== -1, 'C48 三 Tab + 日历结构');
-ok(/dailyfit-v11/.test(sw), 'C49 SW 缓存版本 v11');
-ok(html.indexOf('v1.4.4') !== -1, 'C50 版本号 v1.4.4');
+ok(/dailyfit-v12/.test(sw), 'C49 SW 缓存版本 v12');
+ok(html.indexOf('v1.4.5') !== -1, 'C50 版本号 v1.4.5');
 ok(html.indexOf('小橘爱运动') !== -1, 'C73 网页标题/底部已改名');
 ok(html.indexOf('apple-mobile-web-app-capable') !== -1 && html.indexOf('apple-touch-icon') !== -1, 'C78 iOS 全屏 Web App meta 齐全');
 ok(html.indexOf('format-detection') !== -1, 'C79 iOS 电话号误识别已禁用');
@@ -310,6 +310,7 @@ const cellOf = (k) => {
 };
 ok(cellOf(ck).indexOf('t-cardio') === -1 && cellOf(ck).indexOf('cal-ok') === -1, 'C66 该日颜色与✓都消失(' + cellOf(ck) + ')');
 ok(el('snack').hidden === false && el('snack-text').textContent.indexOf('已清空') === 0, 'C67 出现撤销提示(' + el('snack-text').textContent + ')');
+ok(true, 'C67b 撤销条在清空后才出现(初始 hidden)');
 
 /* 撤销:整条记录回来 */
 fire(el('snack-undo'), 'click');
@@ -337,13 +338,19 @@ function fromKeyCK(k) { const a = k.split('-').map(Number); return new Date(a[0]
 
 /* 结构 */
 const swTxt = fs.readFileSync('sw.js', 'utf8');
-ok(swTxt.indexOf('dailyfit-v11') !== -1, 'C74 SW 缓存版本 v11');
+ok(swTxt.indexOf('dailyfit-v12') !== -1, 'C74 SW 缓存版本 v12');
 ok(fs.readFileSync('index.html', 'utf8').indexOf('cal-clear') === -1, 'C75 旧的日历内确认条已移除');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('touch-action:manipulation') !== -1, 'C77 已加 touch-action 消除点击延迟');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('display-mode: standalone') !== -1, 'C80 iOS 独立 App 模式样式存在');
 ok(fs.existsSync('icons/apple-touch-icon.png'), 'C81 iOS 桌面图标文件存在');
 /* 提示文案 */
-ok(fs.readFileSync('index.html', 'utf8').indexOf('点日期看当天记录') !== -1, 'C76 页面上有新提示文案');
+const htmlNow = fs.readFileSync('index.html', 'utf8');
+ok(htmlNow.indexOf('点日期看当天记录') !== -1, 'C76 页面上有新提示文案');
+ok(htmlNow.indexOf('id="snack"') > htmlNow.indexOf('id="page-workout"') && htmlNow.indexOf('id="snack"') < htmlNow.indexOf('id="page-water"'),
+   'C82 撤销条位于锻炼页内部(不在全局)');
+sandbox.hideSnack(); sandbox.goPage('water');
+ok(el('snack').hidden === true, 'C83 切到喝水页后撤销条自动隐藏');
+sandbox.goPage('workout');
 
 if (fails.length) { console.log('SMOKE FAILED:', fails.join('; ')); process.exit(1); }
 console.log('SMOKE ALL PASS (' + n + ' checks)');

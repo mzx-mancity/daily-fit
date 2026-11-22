@@ -299,6 +299,7 @@ function goPage(p) {
   if (!PAGES.includes(p)) p = 'workout';
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.page === p));
   document.querySelectorAll('.page').forEach(x => x.classList.toggle('active', x.id === 'page-' + p));
+  if (p !== 'workout') hideSnack();       /* 撤销条只属于锻炼页 */
   if (location.hash !== '#' + p) history.replaceState(null, '', '#' + p);
 }
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => goPage(t.dataset.page)));

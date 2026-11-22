@@ -69,9 +69,10 @@ body{
 .day-clear{border:1px solid #fecaca;background:#fef2f2;color:#dc2626;font-size:12px;font-weight:600;
   border-radius:999px;padding:5px 12px;cursor:pointer;flex:none}
 .day-clear:active{background:#fee2e2}
-.snack{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom));
-  width:calc(100% - 28px);max-width:452px;display:flex;align-items:center;gap:10px;z-index:20;
-  background:rgba(31,41,55,.94);color:#fff;border-radius:12px;padding:11px 14px;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+/* 撤销条:跟着内容排版,不悬浮、不遮挡 */
+.snack{display:flex;align-items:center;gap:10px;margin:0 2px 12px;
+  background:rgba(31,41,55,.94);color:#fff;border-radius:12px;padding:10px 12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.16)}
 .snack-text{flex:1 1 0;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .snack-btn{border:none;background:transparent;color:#fbbf24;font-size:13px;font-weight:700;cursor:pointer;flex:none;padding:2px 4px}
 
