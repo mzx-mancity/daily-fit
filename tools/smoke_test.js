@@ -21,10 +21,13 @@ function el(id) { if (!els[id]) els[id] = makeEl(id); return els[id]; }
   'ring-fg','ring-cups','ring-goal','ring-ml','cup-plus','cup-minus','custom-ml','custom-add',
   'set-cup','set-goal','set-note','water-bars','water-bar-x','water-date',
   'btn-help','help-modal','help-body','help-close','help-mask',
+  'day-modal','day-modal-title','day-modal-body','day-close','day-ok','day-mask','day-modal-edit','quick-add-btn',
   'advice-ml','advice-sub','advice-basis','advice-apply',
   'bmi-h','bmi-w','bmi-save','bmi-result','bmi-num','bmi-tag','bmi-pointer','wlist','btn-export','btn-import'
 ].forEach(el);
 el('cal-clear').hidden = true;      /* 初始隐藏(真实 DOM 里就是 hidden 属性) */
+el('day-modal').hidden = true;
+el('help-modal').hidden = true;
 
 const typeBtns = ['cardio','strength','rest'].map(function(t) { const b = makeEl('t-' + t); b.dataset.type = t; return b; });
 const chips = ['臀','腿','肩','胸','背','手臂','核心','跑步','跳绳','游泳','骑行','瑜伽'].map(function(n) {
@@ -82,6 +85,15 @@ const today = keyOf(new Date());
 function DBd() { return JSON.parse(store['fitlog_v1']); }
 function fire(e, t) { (e._listeners[t] || []).forEach(function(fn) { fn({ target: e }); }); }
 function fireT(e, t, target) { (e._listeners[t] || []).forEach(function(fn) { fn({ target: target }); }); }
+/* chips 现在是 #quick-row 上的事件委托,这里模拟点击某个常用项目 / 删除它 */
+function fireChip(name) {
+  fireT(el('quick-row'), 'click', { closest: function(sel) {
+    return sel === '.chip' ? { dataset: { name: name } } : null; } });
+}
+function fireChipDel(name) {
+  fireT(el('quick-row'), 'click', { closest: function(sel) {
+    return sel === '.chip-del' ? { dataset: { del: name } } : null; } });
+}
 function calDayTarget(k) { return { closest: function() { return { dataset: { k: k } }; } }; }
 
 /* ---- 日历骨架 ---- */
@@ -123,8 +135,8 @@ fire(typeBtns[1], 'click');
 el('item-input').value = '深蹲';
 fire(el('item-add'), 'click');
 ok(DBd().days[other].items.length === 1 && DBd().days[other].items[0].name === '深蹲', 'C12 添加项目');
-fire(chips[0], 'click');
-fire(chips[0], 'click');
+fireChip('臀');
+fireChip('臀');
 ok(DBd().days[other].items.filter(function(x){ return x.name === '臀'; }).length === 1, 'C13 chip 去重');
 ok(DBd().days[other].items.length === 2, 'C14 项目数=2');
 
@@ -159,7 +171,7 @@ fire(el('confirm-save'), 'click');
 ok(DBd().days[later].confirmed === true && !!DBd().days[later].confirmedAt, 'C23 确认保存写入 confirmed/时间');
 ok(el('confirm-save').textContent.indexOf('已保存') !== -1, 'C24 按钮变已保存');
 
-fire(chips[1], 'click');
+fireChip('腿');
 ok(DBd().days[later].confirmed === false && DBd().days[later].dirty === true, 'C25 改动后打回待确认');
 ok(el('confirm-state').textContent.indexOf('改动') !== -1, 'C26 提示需重新确认');
 
@@ -221,8 +233,8 @@ ok(css.indexOf('left:0;right:0') !== -1, 'C45 tabbar 用 left/right 定位');
 ok(html.indexOf('page-diet') === -1 && html.indexOf('饮食') === -1, 'C46 饮食页已删除');
 ok(html.indexOf('Keep') === -1 && html.indexOf('keep-') === -1, 'C47 Keep 相关已删除');
 ok(html.indexOf('cal-grid') !== -1 && html.indexOf('data-page="water"') !== -1, 'C48 三 Tab + 日历结构');
-ok(/dailyfit-v15/.test(sw), 'C49 SW 缓存版本 v15');
-ok(html.indexOf('v1.4.8') !== -1, 'C50 版本号 v1.4.8');
+ok(/dailyfit-v16/.test(sw), 'C49 SW 缓存版本 v16');
+ok(html.indexOf('v1.4.9') !== -1, 'C50 版本号 v1.4.9');
 ok(html.indexOf('小橘爱运动') !== -1, 'C73 网页标题/底部已改名');
 ok(html.indexOf('apple-mobile-web-app-capable') !== -1 && html.indexOf('apple-touch-icon') !== -1, 'C78 iOS 全屏 Web App meta 齐全');
 ok(html.indexOf('format-detection') !== -1, 'C79 iOS 电话号误识别已禁用');
@@ -257,7 +269,7 @@ el('confirm-chk').checked = true;
 fire(el('confirm-chk'), 'change');
 fire(el('confirm-save'), 'click');
 ok(DBd().days[today].confirmed === true, 'C54 今天可确认');
-fire(chips[2], 'click');                  /* 加个项目 → 打回未确认 */
+fireChip('肩');                  /* 加个项目 → 打回未确认 */
 ok(el('confirm-chk').checked === false, 'C55 改动后勾选框被重置');
 ok(el('confirm-save').disabled === true, 'C56 改动后必须重新勾选');
 
@@ -288,7 +300,7 @@ const ck = keyOf(new Date(now.getFullYear(), now.getMonth(), Math.min(28, now.ge
 advance(2000);
 fireT(el('cal-grid'), 'click', calDayTarget(ck));
 fire(typeBtns[0], 'click');
-fire(chips[0], 'click');
+fireChip('臀');
 el('confirm-chk').checked = true; fire(el('confirm-chk'), 'change');
 fire(el('confirm-save'), 'click');
 ok(!!(DBd().days[ck] && DBd().days[ck].type === 'cardio' && DBd().days[ck].confirmed === true), 'C61 准备一条已确认记录');
@@ -336,7 +348,7 @@ function fromKeyCK(k) { const a = k.split('-').map(Number); return new Date(a[0]
 
 /* 结构 */
 const swTxt = fs.readFileSync('sw.js', 'utf8');
-ok(swTxt.indexOf('dailyfit-v15') !== -1, 'C74 SW 缓存版本 v15');
+ok(swTxt.indexOf('dailyfit-v16') !== -1, 'C74 SW 缓存版本 v16');
 ok(fs.readFileSync('index.html', 'utf8').indexOf('cal-clear') === -1, 'C75 旧的日历内确认条已移除');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('touch-action:manipulation') !== -1, 'C77 已加 touch-action 消除点击延迟');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('display-mode: standalone') !== -1, 'C80 iOS 独立 App 模式样式存在');
@@ -346,7 +358,7 @@ advance(2000);
 const sk = keyOf(new Date(now.getFullYear(), now.getMonth(), Math.min(28, now.getDate() + 3)));
 fireT(el('cal-grid'), 'click', calDayTarget(sk));
 fire(typeBtns[1], 'click');            /* 无氧 */
-fire(chips[1], 'click');               /* 加一个项目(腿) */
+fireChip('腿');               /* 加一个项目(腿) */
 sandbox.renderAll();
 const htmlSets = el('item-list').innerHTML;
 ok(htmlSets.indexOf('sets-row') !== -1, 'S1 无氧项目出现组数行');
@@ -415,6 +427,53 @@ const jsSrc = fs.readFileSync('js/app.js', 'utf8');
 ok(jsSrc.indexOf('exportData') === -1, 'E1 导出逻辑已删除');
 ok(html.indexOf('导出数据') === -1, 'E2 页面上已无导出按钮');
 ok(html.indexOf('导入数据') === -1, 'E3 页面上已无导入按钮');
+
+/* ---- 常用项目 chips:可自定义删除 ---- */
+sandbox.window.__fitlog.setDB(JSON.parse(JSON.stringify(sandbox.window.__fitlog.DB)));
+sandbox.window.__fitlog.DB.favs = ['臀','腿','肩'];
+sandbox.window.__fitlog.save(); sandbox.renderAll();
+let qr = el('quick-row').innerHTML;
+ok(qr.indexOf('chip-del') !== -1 && qr.split('chip-del').length - 1 === 3, 'Q1 每个常用项目右侧有删除按钮(3 个)');
+fireChipDel('腿');
+ok(DBd().favs.join(',') === '臀,肩', 'Q2 删掉「腿」后常用里不再有它(' + DBd().favs.join(',') + ')');
+sandbox.renderAll();
+ok(el('quick-row').innerHTML.split('chip-del').length - 1 === 2, 'Q3 界面同步减少一个');
+/* 新项目自动进常用 */
+fireT(el('cal-grid'), 'click', calDayTarget(today));
+el('item-input').value = '弹力带';
+fire(el('item-add'), 'click');
+ok(DBd().favs.indexOf('弹力带') !== -1, 'Q4 自定义新项目自动加入常用(' + DBd().favs.join(',') + ')');
+/* 常用全删空时给提示 */
+sandbox.window.__fitlog.DB.favs = [];
+sandbox.window.__fitlog.save(); sandbox.renderAll();
+ok(el('quick-row').innerHTML.indexOf('常用项目都删掉了') !== -1, 'Q5 常用清空后有提示');
+
+/* ---- 点日期弹出当天详情 ---- */
+sandbox.window.__fitlog.DB.favs = ['臀','腿'];
+sandbox.window.__fitlog.save();
+el('day-modal').hidden = true;
+fireT(el('cal-grid'), 'click', calDayTarget(today));
+ok(el('day-modal').hidden === false, 'M1 点日期弹出当天详情');
+ok(el('day-modal-title').textContent.indexOf('月') !== -1, 'M2 弹层标题是日期(' + el('day-modal-title').textContent + ')');
+const body = el('day-modal-body').innerHTML;
+ok(body.indexOf('运动类型') !== -1 && body.indexOf('状态') !== -1, 'M3 弹层显示类型与状态');
+fire(el('day-ok'), 'click');
+ok(el('day-modal').hidden === true, 'M4 点关闭收起');
+fireT(el('cal-grid'), 'click', calDayTarget(today));
+fire(el('day-mask'), 'click');
+ok(el('day-modal').hidden === true, 'M5 点遮罩收起');
+/* 选中日同步切换 */
+advance(2000);
+const mk = keyOf(new Date(now.getFullYear(), now.getMonth(), 12));
+fireT(el('cal-grid'), 'click', calDayTarget(mk));
+ok(el('day-title').textContent.indexOf('月12日') !== -1, 'M6 弹层同时切换下方编辑日(' + el('day-title').textContent + ')');
+fire(el('day-close'), 'click');
+
+/* ---- 日历三色加深 ---- */
+const cssNow = fs.readFileSync('css/style.css', 'utf8');
+ok(cssNow.indexOf('.cal-day.t-cardio{background:#dbeafe}') !== -1, 'P1 有氧底色加深(#dbeafe)');
+ok(cssNow.indexOf('.cal-day.t-strength{background:#ffedd5}') !== -1, 'P2 无氧底色加深(#ffedd5)');
+ok(cssNow.indexOf('.cal-day.t-rest{background:#d1fae5}') !== -1, 'P3 休息底色加深(#d1fae5)');
 
 /* 提示文案 */
 const htmlNow = fs.readFileSync('index.html', 'utf8');

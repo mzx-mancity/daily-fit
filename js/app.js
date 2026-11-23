@@ -3,8 +3,14 @@
 
 /* ---------- 存储 ---------- */
 const KEY = 'fitlog_v1';
+const DEFAULT_FAVS = ['臀', '腿', '肩', '胸', '背', '手臂', '核心', '跑步', '跳绳', '游泳', '骑行', '瑜伽'];
+
 function blank() {
-  return { profile: { heightCm: null, weightKg: null, cupMl: 250, cupsGoal: 5, weightLog: [] }, days: {} };
+  return {
+    profile: { heightCm: null, weightKg: null, cupMl: 250, cupsGoal: 5, weightLog: [] },
+    favs: DEFAULT_FAVS.slice(),
+    days: {}
+  };
 }
 function load() {
   try {
@@ -14,6 +20,7 @@ function load() {
     if (!d.profile) d.profile = blank().profile;
     if (!d.days) d.days = {};
     if (!Array.isArray(d.profile.weightLog)) d.profile.weightLog = [];
+    if (!Array.isArray(d.favs)) d.favs = DEFAULT_FAVS.slice();
     return d;
   } catch (e) { return blank(); }
 }
@@ -157,6 +164,18 @@ function renderDay() {
           : '') +
         '</li>';
     }).join('');
+  }
+
+  /* 常用项目 chips:每个右上角有 ✕ 可删除(自定义项目名也能删) */
+  const qr = $('quick-row');
+  if (qr) {
+    const favs = Array.isArray(DB.favs) ? DB.favs : DEFAULT_FAVS.slice();
+    qr.innerHTML = favs.map(n =>
+      '<span class="chip-wrap">' +
+        '<button class="chip" data-name="' + esc(n) + '">' + esc(n) + '</button>' +
+        '<button class="chip-del" data-del="' + esc(n) + '" aria-label="删除常用">✕</button>' +
+      '</span>'
+    ).join('') || '<div class="empty-tip" style="padding:6px 0">常用项目都删掉了,输入名称添加后会出现在这里</div>';
   }
 
   /* 沿用上次: 当前没项目,且之前某天有项目 */
@@ -396,6 +415,16 @@ $('cal-grid').addEventListener('click', e => {
   const b = e.target.closest('.cal-day');
   if (!b || !b.dataset.k) return;
   pickDate(b.dataset.k);
+  openDayModal(b.dataset.k);      /* 点日期:弹出当天练了什么 */
+});
+
+$('day-close').addEventListener('click', closeDayModal);
+$('day-ok').addEventListener('click', closeDayModal);
+$('day-mask').addEventListener('click', closeDayModal);
+$('day-modal-edit').addEventListener('click', () => {
+  closeDayModal();
+  const card = $('items-card');
+  if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 /* ---------- 清空某天 ---------- */
@@ -451,6 +480,9 @@ function addItemByName(name) {
   if (!Array.isArray(day.items)) day.items = [];
   if (day.items.some(it => it.name === name)) return false;
   day.items.push({ name: name, detail: '' });
+  /* 新名字自动加入常用项目(下次点一下就行) */
+  if (!Array.isArray(DB.favs)) DB.favs = DEFAULT_FAVS.slice();
+  if (DB.favs.indexOf(name) === -1 && DB.favs.length < 24) DB.favs.push(name);
   touch(day);
   save(); renderAll();
   return true;
@@ -462,7 +494,18 @@ $('item-add').addEventListener('click', () => {
   if (addItemByName(name)) inp.value = '';
 });
 $('item-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('item-add').click(); });
-document.querySelectorAll('#quick-row .chip').forEach(c => c.addEventListener('click', () => addItemByName(c.dataset.name)));
+$('quick-row').addEventListener('click', (e) => {
+  const del = e.target.closest('.chip-del');
+  if (del) {
+    if (e.stopPropagation) e.stopPropagation();
+    const name = del.dataset.del;
+    DB.favs = (Array.isArray(DB.favs) ? DB.favs : DEFAULT_FAVS.slice()).filter(x => x !== name);
+    save(); renderDay();
+    return;
+  }
+  const chip = e.target.closest('.chip');
+  if (chip) addItemByName(chip.dataset.name);
+});
 
 $('item-list').addEventListener('click', e => {
   const step = e.target.closest('.step-btn');
@@ -580,6 +623,48 @@ $('bmi-save').addEventListener('click', () => {
   DB.profile.heightCm = h; DB.profile.weightKg = w;
   showBmi(h, w, true); save(); renderMe();
 });
+/* ---------- 点日历:弹出当天练了什么 ---------- */
+function openDayModal(k) {
+  const d = fromKey(k);
+  const rel = k === TODAY() ? ' · 今天' : (k === keyOf(d2(1)) ? ' · 明天' : (k === keyOf(d2(-1)) ? ' · 昨天' : ''));
+  $('day-modal-title').textContent = fmtFull(d) + rel;
+
+  const day = DB.days[k] || {};
+  const items = Array.isArray(day.items) ? day.items : [];
+  const rows = [];
+  const tName = typeName(day.type);
+  const badge = day.confirmed ? '已确认' : (dayHasLog(day) ? '待确认' : '无记录');
+  rows.push('<div class="dm-row"><span class="dm-k">运动类型</span><span class="dm-v">' +
+    (day.type ? tName : '未选择') + '</span></div>');
+  rows.push('<div class="dm-row"><span class="dm-k">状态</span><span class="dm-v">' + badge + '</span></div>');
+  if (day.type === 'rest') {
+    rows.push('<div class="dm-note">这天是休息日,好好恢复 🌙</div>');
+  } else if (!items.length) {
+    rows.push('<div class="dm-note">这天还没有记录锻炼项目</div>');
+  } else {
+    rows.push('<div class="dm-sep">锻炼项目</div>');
+    items.forEach(function (it) {
+      const goal = Number(it.goal) || 3;
+      const sets = Number(it.sets) || 0;
+      let sub = it.name;
+      if (day.type === 'strength') sub += ' · ' + sets + '/' + goal + ' 组';
+      if (it.detail) sub += ' · ' + it.detail;
+      rows.push('<div class="dm-item' + (it.done || (day.type === 'strength' && sets >= goal) ? ' done' : '') + '">' +
+        '<span class="dm-dot"></span>' + esc(sub) + '</div>');
+    });
+  }
+  const cups = Number(day.cups) || 0;
+  if (cups > 0) {
+    rows.push('<div class="dm-row"><span class="dm-k">喝水</span><span class="dm-v">' + cups + ' 杯</span></div>');
+  }
+  if (day.confirmedAt) {
+    rows.push('<div class="dm-note">确认时间:' + String(day.confirmedAt).slice(5) + '</div>');
+  }
+  $('day-modal-body').innerHTML = rows.join('');
+  $('day-modal').hidden = false;
+}
+function closeDayModal() { $('day-modal').hidden = true; }
+
 /* ---------- 应用内使用说明弹层(不跳转页面,避免 WebView 卡死) ---------- */
 function openHelp() {
   const m = $('help-modal');
@@ -600,7 +685,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHelp(
 renderAll();
 
 /* 供自测脚本读取当前内存数据(浏览器里无副作用) */
-if (typeof window !== 'undefined') window.__fitlog = { get DB() { return DB; }, save: save, setDB: function (d) { DB = d; } };
+if (typeof window !== 'undefined') window.__fitlog = { get DB() { return DB; }, save: save, setDB: function (d) { DB = d; if (!Array.isArray(DB.favs)) DB.favs = DEFAULT_FAVS.slice(); } };
 
 // Service Worker:仅网页版注册(PWA 离线);WebView 容器里由 window.__NO_SW 关闭
 if ('serviceWorker' in navigator && !window.__NO_SW) {

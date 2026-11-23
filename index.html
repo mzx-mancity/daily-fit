@@ -72,20 +72,8 @@
         <input id="item-input" maxlength="12" placeholder="项目名称,如:臀腿">
         <button class="add-btn" id="item-add">添加</button>
       </div>
-      <div class="quick-row" id="quick-row">
-        <button class="chip" data-name="臀">臀</button>
-        <button class="chip" data-name="腿">腿</button>
-        <button class="chip" data-name="肩">肩</button>
-        <button class="chip" data-name="胸">胸</button>
-        <button class="chip" data-name="背">背</button>
-        <button class="chip" data-name="手臂">手臂</button>
-        <button class="chip" data-name="核心">核心</button>
-        <button class="chip" data-name="跑步">跑步</button>
-        <button class="chip" data-name="跳绳">跳绳</button>
-        <button class="chip" data-name="游泳">游泳</button>
-        <button class="chip" data-name="骑行">骑行</button>
-        <button class="chip" data-name="瑜伽">瑜伽</button>
-      </div>
+      <div class="quick-row" id="quick-row"></div>
+      <button class="quick-add" id="quick-add-btn" hidden>+ 添加常用</button>
       <ul class="item-list" id="item-list"></ul>
       <button class="copy-last" id="copy-last" hidden>沿用上次的项目</button>
     </div>
@@ -183,8 +171,24 @@
       <button class="save-btn ghost" id="btn-help">📖 使用说明 / 安装教程</button>
     </div>
 
-    <div class="about">小橘爱运动 · v1.4.8 · 本地离线优先</div>
+    <div class="about">小橘爱运动 · v1.4.9 · 本地离线优先</div>
   </section>
+
+  <!-- 当天详情(点日历弹出) -->
+  <div class="modal" id="day-modal" hidden>
+    <div class="modal-mask" id="day-mask"></div>
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <span class="modal-title" id="day-modal-title">11月23日 · 周一</span>
+        <button class="modal-close" id="day-close" aria-label="关闭">✕</button>
+      </div>
+      <div class="modal-body" id="day-modal-body"></div>
+      <div class="modal-foot">
+        <button class="save-btn ghost half" id="day-modal-edit">去修改</button>
+        <button class="save-btn half" id="day-ok">关闭</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 使用说明(应用内弹层,不跳转) -->
   <div class="modal" id="help-modal" hidden>
