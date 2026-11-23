@@ -107,17 +107,21 @@ body{
 .chip{border:1.5px dashed var(--line);background:#fafafa;border-radius:999px;padding:6px 13px;font-size:13px;color:var(--gray);cursor:pointer;max-width:100%}
 .chip:active{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
 .item-list{list-style:none}
-.item-list li{display:flex;align-items:center;gap:8px;background:#fafafa;border:1px solid var(--line);
+.item-list li{display:block;background:#fafafa;border:1px solid var(--line);
   border-radius:10px;padding:8px 10px;margin-bottom:8px;min-width:0}
+.item-main{display:flex;align-items:center;gap:8px;min-width:0}
 .item-list li.done{background:var(--green-bg);border-color:#bbf7d0}
 .item-list li.done .item-name{text-decoration:line-through;color:#6b7280}
 .item-chk{display:flex;align-items:center;cursor:pointer;flex:none}
 .item-chk input{width:16px;height:16px;margin-right:6px;accent-color:var(--green-dark)}
 .item-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex:none}
-.item-name{font-weight:600;font-size:14px;flex:none;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.item-detail{flex:1 1 0;min-width:0;border:none;background:transparent;font-size:13px;color:var(--gray);outline:none}
+.item-name{font-weight:600;font-size:14px;flex:0 1 auto;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item-detail{display:block;width:100%;margin-top:6px;border:none;border-radius:8px;background:#fff;
+  border:1px solid var(--line);padding:7px 9px;font-size:13px;color:var(--text);outline:none}
 .item-detail::placeholder{color:#c0c4cc}
-.item-del{border:none;background:#fef2f2;color:#ef4444;width:26px;height:26px;border-radius:8px;font-size:14px;cursor:pointer;flex:none}
+.item-detail:focus{border-color:var(--green)}
+.item-del{border:none;background:#fef2f2;color:#ef4444;width:26px;height:26px;border-radius:8px;font-size:14px;
+  cursor:pointer;flex:none;margin-left:auto}
 .copy-last{width:100%;margin-top:4px;border:1.5px dashed var(--line);background:#fff;color:var(--gray);
   border-radius:10px;padding:9px 0;font-size:13px;cursor:pointer}
 .copy-last:active{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
@@ -215,3 +219,16 @@ body{
 }
 /* iOS 上禁止长按图片/链接弹出菜单,避免误触 */
 body { -webkit-touch-callout: none; }
+
+/* ---------- 无氧:目标组数 / 已完成组数 ---------- */
+.sets-row{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.sets-lab{font-size:11px;color:var(--gray);flex:none}
+.sets-lab.sep{margin-left:6px}
+.sets-val{font-size:13px;font-weight:700;min-width:18px;text-align:center;color:var(--text);flex:none}
+.sets-val.big{font-size:15px;color:#c2410c}
+.sets-val.big.full{color:var(--green-dark)}
+.step-btn{width:26px;height:26px;border:none;border-radius:8px;background:#fff;border:1px solid var(--line);
+  color:var(--text);font-size:15px;line-height:1;cursor:pointer;flex:none;touch-action:manipulation}
+.step-btn:active{background:var(--bg);transform:scale(.94)}
+.step-btn.on{background:var(--orange-bg);border-color:#fed7aa;color:#c2410c;font-weight:700}
+.step-btn.on:active{background:#ffedd5}

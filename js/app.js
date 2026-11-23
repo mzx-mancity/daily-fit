@@ -131,13 +131,32 @@ function renderDay() {
   if (!items.length) {
     ul.innerHTML = '<div class="empty-tip">这天还没有项目</div>';
   } else {
-    ul.innerHTML = items.map((it, i) =>
-      '<li class="' + (it.done ? 'done' : '') + '">' +
-      '<label class="item-chk"><input type="checkbox" class="item-done" data-i="' + i + '"' + (it.done ? ' checked' : '') + '><span class="item-dot"></span></label>' +
-      '<span class="item-name">' + esc(it.name) + '</span>' +
-      '<input class="item-detail" data-i="' + i + '" placeholder="详情,如:深蹲 4×12" value="' + esc(it.detail || '') + '" maxlength="40">' +
-      '<button class="item-del" data-i="' + i + '" aria-label="删除">✕</button></li>'
-    ).join('');
+    const showSets = (type === 'strength');
+    ul.innerHTML = items.map((it, i) => {
+      const done = Number(it.sets) || 0;
+      const goal = Number(it.goal) || 3;
+      const isDone = it.done || (showSets && goal > 0 && done >= goal);
+      return '<li class="' + (isDone ? 'done' : '') + '">' +
+        '<div class="item-main">' +
+        '<label class="item-chk"><input type="checkbox" class="item-done" data-i="' + i + '"' + (it.done ? ' checked' : '') + '><span class="item-dot"></span></label>' +
+        '<span class="item-name">' + esc(it.name) + '</span>' +
+        '<button class="item-del" data-i="' + i + '" aria-label="删除">✕</button>' +
+        '</div>' +
+        '<input class="item-detail" data-i="' + i + '" placeholder="备注,如:20kg × 12" value="' + esc(it.detail || '') + '" maxlength="40">' +
+        (showSets
+          ? '<div class="sets-row">' +
+              '<span class="sets-lab">目标</span>' +
+              '<button class="step-btn" data-act="goal-" data-i="' + i + '">−</button>' +
+              '<span class="sets-val" data-i="' + i + '">' + goal + '</span>' +
+              '<button class="step-btn" data-act="goal+" data-i="' + i + '">+</button>' +
+              '<span class="sets-lab sep">已完成</span>' +
+              '<button class="step-btn on" data-act="done-" data-i="' + i + '">−</button>' +
+              '<span class="sets-val big' + (done >= goal ? ' full' : '') + '" data-i="' + i + '">' + done + '</span>' +
+              '<button class="step-btn on" data-act="done+" data-i="' + i + '">+</button>' +
+            '</div>'
+          : '') +
+        '</li>';
+    }).join('');
   }
 
   /* 沿用上次: 当前没项目,且之前某天有项目 */
@@ -355,16 +374,14 @@ $('cal-grid').addEventListener('click', e => {
   pickDate(b.dataset.k);
 });
 
-/* ---------- 清空某天:一键完成 + 5 秒内可撤销 ---------- */
-let undoState = null;    /* { key, snapshot, hadDay } */
+/* ---------- 清空某天 ---------- */
 let snackTimer = 0;
 
-function showSnack(text, undoable) {
+function showSnack(text) {
   $('snack-text').textContent = text;
   $('snack').hidden = false;
-  $('snack-undo').hidden = !undoable;
   if (snackTimer) clearTimeout(snackTimer);
-  snackTimer = setTimeout(hideSnack, 5000);
+  snackTimer = setTimeout(hideSnack, 3000);
 }
 function hideSnack() {
   if (snackTimer) { clearTimeout(snackTimer); snackTimer = 0; }
@@ -373,8 +390,7 @@ function hideSnack() {
 
 function clearDay(k) {
   const day = DB.days[k];
-  if (!dayHasLog(day)) { showSnack('这天还没有记录', false); return false; }
-  undoState = { key: k, snapshot: JSON.parse(JSON.stringify(day)), hadDay: true };
+  if (!dayHasLog(day)) { showSnack('这天还没有记录'); return false; }
   delete day.type;
   delete day.items;
   delete day.confirmed;
@@ -387,23 +403,11 @@ function clearDay(k) {
   renderCalendar();
   renderDay();
   const d = fromKey(k);
-  showSnack('已清空 ' + (d.getMonth() + 1) + '月' + d.getDate() + '日 的记录', true);
+  showSnack('已清空 ' + (d.getMonth() + 1) + '月' + d.getDate() + '日 的记录');
   return true;
 }
 
-function undoClear() {
-  if (!undoState) return;
-  const st = undoState;
-  undoState = null;
-  if (st.hadDay) DB.days[st.key] = st.snapshot;
-  save();
-  renderCalendar();
-  renderDay();
-  showSnack('已撤销', false);
-}
-
 $('day-clear').addEventListener('click', () => clearDay(viewDate));
-$('snack-undo').addEventListener('click', undoClear);
 
 /* 左右滑动切换月份 */
 (function bindSwipe() {
@@ -452,6 +456,25 @@ $('item-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('ite
 document.querySelectorAll('#quick-row .chip').forEach(c => c.addEventListener('click', () => addItemByName(c.dataset.name)));
 
 $('item-list').addEventListener('click', e => {
+  const step = e.target.closest('.step-btn');
+  if (step) {
+    const day = DB.days[viewDate];
+    const it = day && day.items && day.items[Number(step.dataset.i)];
+    if (!it) return;
+    const act = step.dataset.act;
+    if (act === 'goal+') it.goal = Math.min((Number(it.goal) || 3) + 1, 30);
+    else if (act === 'goal-') it.goal = Math.max((Number(it.goal) || 3) - 1, 1);
+    else if (act === 'done+') {
+      it.sets = Math.min((Number(it.sets) || 0) + 1, 99);
+      const g = Number(it.goal) || 3;
+      if (it.sets >= g) it.done = true;          /* 做满目标自动打勾 */
+    } else if (act === 'done-') {
+      it.sets = Math.max((Number(it.sets) || 0) - 1, 0);
+      if (it.sets < (Number(it.goal) || 3)) it.done = false;
+    }
+    touch(day); save(); renderDay(); renderCalendar();
+    return;
+  }
   const btn = e.target.closest('.item-del');
   if (!btn) return;
   const day = DB.days[viewDate];
@@ -542,14 +565,58 @@ $('bmi-save').addEventListener('click', () => {
   DB.profile.heightCm = h; DB.profile.weightKg = w;
   showBmi(h, w, true); save(); renderMe();
 });
-$('btn-export').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'daily-fit-backup-' + TODAY() + '.json';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-});
+/* 导出:WebView / iOS 主屏 App 里 a[download] 常常无效,
+   依次尝试 ① 系统分享面板 ② 下载 ③ 复制到剪贴板(带提示) */
+function exportData() {
+  const text = JSON.stringify(DB, null, 2);
+  const name = 'daily-fit-backup-' + TODAY() + '.json';
+  const done = (msg) => showSnack(msg);
+  const copy = () => {
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand && document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok ? '数据已复制到剪贴板,粘贴到备忘录保存即可' : '导出失败,请用浏览器打开网页版再导出');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => done('数据已复制到剪贴板,粘贴到备忘录保存即可'), fallback);
+    } else fallback();
+  };
+  const download = () => {
+    try {
+      const blob = new Blob([text], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      done('已导出 ' + name);
+      return true;
+    } catch (e) { return false; }
+  };
+  const nav = (typeof navigator !== 'undefined') ? navigator : {};
+  if (nav.canShare && typeof File === 'function') {
+    try {
+      const file = new File([text], name, { type: 'application/json' });
+      if (nav.canShare({ files: [file] })) {
+        nav.share({ files: [file], title: '小橘爱运动 · 备份' }).then(
+          () => done('已分享备份文件'),
+          () => { if (!download()) copy(); });
+        return;
+      }
+    } catch (e) {}
+  }
+  if (!download()) copy();
+}
+$('btn-export').addEventListener('click', exportData);
 $('btn-import').addEventListener('click', () => {
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'application/json,.json';
@@ -565,7 +632,7 @@ $('btn-import').addEventListener('click', () => {
         if (!DB.profile) DB.profile = blank().profile;
         if (!Array.isArray(DB.profile.weightLog)) DB.profile.weightLog = [];
         save(); renderAll();
-      } catch (e) { alert('文件格式不对,导入失败'); }
+      } catch (e) { showSnack('文件格式不对,导入失败'); }
     };
     r.readAsText(f);
   };

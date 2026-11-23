@@ -218,8 +218,8 @@ ok(css.indexOf('left:0;right:0') !== -1, 'C45 tabbar 用 left/right 定位');
 ok(html.indexOf('page-diet') === -1 && html.indexOf('饮食') === -1, 'C46 饮食页已删除');
 ok(html.indexOf('Keep') === -1 && html.indexOf('keep-') === -1, 'C47 Keep 相关已删除');
 ok(html.indexOf('cal-grid') !== -1 && html.indexOf('data-page="water"') !== -1, 'C48 三 Tab + 日历结构');
-ok(/dailyfit-v13/.test(sw), 'C49 SW 缓存版本 v13');
-ok(html.indexOf('v1.4.6') !== -1, 'C50 版本号 v1.4.6');
+ok(/dailyfit-v14/.test(sw), 'C49 SW 缓存版本 v14');
+ok(html.indexOf('v1.4.7') !== -1, 'C50 版本号 v1.4.7');
 ok(html.indexOf('小橘爱运动') !== -1, 'C73 网页标题/底部已改名');
 ok(html.indexOf('apple-mobile-web-app-capable') !== -1 && html.indexOf('apple-touch-icon') !== -1, 'C78 iOS 全屏 Web App meta 齐全');
 ok(html.indexOf('format-detection') !== -1, 'C79 iOS 电话号误识别已禁用');
@@ -279,7 +279,7 @@ const dump2 = DBd();
 ok(typeof dump2.days === 'object' && typeof dump2.profile === 'object' && Array.isArray(dump2.profile.weightLog), 'C60 数据结构完整');
 
 
-/* ---- 一键清空 + 撤销 ---- */
+/* ---- 一键清空(无撤销) ---- */
 const ck = keyOf(new Date(now.getFullYear(), now.getMonth(), Math.min(28, now.getDate() + 1)));
 
 advance(2000);
@@ -309,14 +309,9 @@ const cellOf = (k) => {
   return m ? m[1] : '(missing)';
 };
 ok(cellOf(ck).indexOf('t-cardio') === -1 && cellOf(ck).indexOf('cal-ok') === -1, 'C66 该日颜色与✓都消失(' + cellOf(ck) + ')');
-ok(el('snack').hidden === false && el('snack-text').textContent.indexOf('已清空') === 0, 'C67 出现撤销提示(' + el('snack-text').textContent + ')');
-ok(true, 'C67b 撤销条在清空后才出现(初始 hidden)');
-
-/* 撤销:整条记录回来 */
-fire(el('snack-undo'), 'click');
-ok(!!(DBd().days[ck] && DBd().days[ck].type === 'cardio' && DBd().days[ck].confirmed === true), 'C68 撤销后记录恢复');
-ok(DBd().days[ck].items.length === 1, 'C69 撤销后项目也恢复');
-ok(el('snack-text').textContent === '已撤销', 'C70 提示已撤销');
+ok(el('snack').hidden === false && el('snack-text').textContent.indexOf('已清空') === 0, 'C67 出现清空提示(' + el('snack-text').textContent + ')');
+ok(fs.readFileSync('index.html', 'utf8').indexOf('snack-undo') === -1, 'C68 撤销按钮已删除(HTML)');
+ok(fs.readFileSync('js/app.js', 'utf8').indexOf('undoClear') === -1, 'C69 撤销逻辑已删除(JS)');
 
 /* 清空保留喝水 */
 advance(2000);
@@ -338,11 +333,53 @@ function fromKeyCK(k) { const a = k.split('-').map(Number); return new Date(a[0]
 
 /* 结构 */
 const swTxt = fs.readFileSync('sw.js', 'utf8');
-ok(swTxt.indexOf('dailyfit-v13') !== -1, 'C74 SW 缓存版本 v13');
+ok(swTxt.indexOf('dailyfit-v14') !== -1, 'C74 SW 缓存版本 v14');
 ok(fs.readFileSync('index.html', 'utf8').indexOf('cal-clear') === -1, 'C75 旧的日历内确认条已移除');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('touch-action:manipulation') !== -1, 'C77 已加 touch-action 消除点击延迟');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('display-mode: standalone') !== -1, 'C80 iOS 独立 App 模式样式存在');
 ok(fs.existsSync('icons/apple-touch-icon.png'), 'C81 iOS 桌面图标文件存在');
+/* ---- 无氧:目标组数 / 已完成组数 ---- */
+advance(2000);
+const sk = keyOf(new Date(now.getFullYear(), now.getMonth(), Math.min(28, now.getDate() + 3)));
+fireT(el('cal-grid'), 'click', calDayTarget(sk));
+fire(typeBtns[1], 'click');            /* 无氧 */
+fire(chips[1], 'click');               /* 加一个项目(腿) */
+sandbox.renderAll();
+const htmlSets = el('item-list').innerHTML;
+ok(htmlSets.indexOf('sets-row') !== -1, 'S1 无氧项目出现组数行');
+ok(htmlSets.indexOf('目标') !== -1 && htmlSets.indexOf('已完成') !== -1, 'S2 目标/已完成标签都在');
+ok(/data-act="done\+"/.test(htmlSets) && /data-act="done-"/.test(htmlSets), 'S3 已完成 +/- 按钮存在');
+
+const item0 = () => (DBd().days[sk].items || [])[0] || {};
+const clickStep = (act, i) => fireT(el('item-list'), 'click', { closest: (s) => s === '.step-btn' ? { dataset: { act: act, i: String(i) } } : null });
+
+ok(item0().goal === undefined || item0().goal === null, 'S4 初始未设置目标(界面默认显示 3)');
+clickStep('goal+', 0);
+ok(item0().goal === 4, 'S5 goal+ 从默认 3 变成 4');
+clickStep('goal-', 0); clickStep('goal-', 0);
+ok(item0().goal === 2, 'S6 goal- 连按两次 = 2');
+clickStep('goal+', 0);
+ok(item0().goal === 3, 'S7 目标调回 3');
+clickStep('done+', 0); clickStep('done+', 0);
+ok(item0().sets === 2 && !item0().done, 'S8 已完成 2 组,未满目标不打勾');
+clickStep('done-', 0);
+ok(item0().sets === 1, 'S9 减一组生效');
+clickStep('done+', 0); clickStep('done+', 0);
+ok(item0().sets === 3 && item0().done === true, 'S10 做满目标自动打勾');
+clickStep('done-', 0);
+ok(item0().sets === 2 && item0().done === false, 'S10b 减到未满时取消打勾');
+
+/* 有氧不显示组数行 */
+fire(typeBtns[0], 'click');
+sandbox.renderAll();
+ok(el('item-list').innerHTML.indexOf('sets-row') === -1, 'S11 有氧不显示组数行');
+
+/* ---- 导出:提供多种兜底 ---- */
+const jsSrc = fs.readFileSync('js/app.js', 'utf8');
+ok(jsSrc.indexOf('navigator.clipboard') !== -1 || jsSrc.indexOf('clipboard.writeText') !== -1, 'E1 导出包含剪贴板兜底');
+ok(jsSrc.indexOf('canShare') !== -1, 'E2 导出包含系统分享兜底');
+ok(jsSrc.indexOf('execCommand') !== -1, 'E3 导出包含 execCommand 兜底');
+
 /* 提示文案 */
 const htmlNow = fs.readFileSync('index.html', 'utf8');
 ok(htmlNow.indexOf('点日期看当天记录') !== -1, 'C76 页面上有新提示文案');
