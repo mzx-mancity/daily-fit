@@ -261,19 +261,14 @@ body { -webkit-touch-callout: none; }
 /* ---------- 常用项目 chips(右上角可删) ---------- */
 .chip-wrap{position:relative;display:inline-flex;margin:0 10px 10px 0}
 .chip-wrap .chip{margin:0;padding:6px 16px 6px 13px}
-.chip-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;
-  border:none;background:#ef4444;color:#fff;font-size:10px;line-height:1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.2);touch-action:manipulation}
-.chip-del:active{background:#dc2626;transform:scale(.92)}
+/* 删除角标:淡红描边,不抢眼 */
+.chip-del{position:absolute;top:-5px;right:-5px;width:17px;height:17px;border-radius:50%;
+  border:1px solid #fecaca;background:#fff;color:#f87171;font-size:9px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;touch-action:manipulation;
+  box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.chip-del:active{background:#fef2f2;border-color:#fca5a5;transform:scale(.92)}
 
-/* ---------- 日历三种颜色加深一点 ---------- */
-.cal-day.t-cardio{background:#dbeafe}
-.cal-day.t-cardio .cal-num{color:#1d4ed8}
-.cal-day.t-strength{background:#ffedd5}
-.cal-day.t-strength .cal-num{color:#c2410c}
-.cal-day.t-rest{background:#d1fae5}
-.cal-day.t-rest .cal-num{color:#047857}
-.cal-day.has{background:#eef2f6}
+/* ---------- 日历三种颜色(与 v1.4.8 相同,浅色调) ---------- */
 
 /* ---------- 当天详情弹层 ---------- */
 .modal-foot{display:flex;gap:10px;padding:10px 16px 16px;border-top:1px solid var(--line)}

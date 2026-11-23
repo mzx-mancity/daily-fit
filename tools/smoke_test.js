@@ -233,8 +233,8 @@ ok(css.indexOf('left:0;right:0') !== -1, 'C45 tabbar 用 left/right 定位');
 ok(html.indexOf('page-diet') === -1 && html.indexOf('饮食') === -1, 'C46 饮食页已删除');
 ok(html.indexOf('Keep') === -1 && html.indexOf('keep-') === -1, 'C47 Keep 相关已删除');
 ok(html.indexOf('cal-grid') !== -1 && html.indexOf('data-page="water"') !== -1, 'C48 三 Tab + 日历结构');
-ok(/dailyfit-v16/.test(sw), 'C49 SW 缓存版本 v16');
-ok(html.indexOf('v1.4.9') !== -1, 'C50 版本号 v1.4.9');
+ok(/dailyfit-v17/.test(sw), 'C49 SW 缓存版本 v17');
+ok(html.indexOf('v1.4.10') !== -1, 'C50 版本号 v1.4.10');
 ok(html.indexOf('小橘爱运动') !== -1, 'C73 网页标题/底部已改名');
 ok(html.indexOf('apple-mobile-web-app-capable') !== -1 && html.indexOf('apple-touch-icon') !== -1, 'C78 iOS 全屏 Web App meta 齐全');
 ok(html.indexOf('format-detection') !== -1, 'C79 iOS 电话号误识别已禁用');
@@ -348,7 +348,7 @@ function fromKeyCK(k) { const a = k.split('-').map(Number); return new Date(a[0]
 
 /* 结构 */
 const swTxt = fs.readFileSync('sw.js', 'utf8');
-ok(swTxt.indexOf('dailyfit-v16') !== -1, 'C74 SW 缓存版本 v16');
+ok(swTxt.indexOf('dailyfit-v17') !== -1, 'C74 SW 缓存版本 v17');
 ok(fs.readFileSync('index.html', 'utf8').indexOf('cal-clear') === -1, 'C75 旧的日历内确认条已移除');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('touch-action:manipulation') !== -1, 'C77 已加 touch-action 消除点击延迟');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('display-mode: standalone') !== -1, 'C80 iOS 独立 App 模式样式存在');
@@ -471,9 +471,12 @@ fire(el('day-close'), 'click');
 
 /* ---- 日历三色加深 ---- */
 const cssNow = fs.readFileSync('css/style.css', 'utf8');
-ok(cssNow.indexOf('.cal-day.t-cardio{background:#dbeafe}') !== -1, 'P1 有氧底色加深(#dbeafe)');
-ok(cssNow.indexOf('.cal-day.t-strength{background:#ffedd5}') !== -1, 'P2 无氧底色加深(#ffedd5)');
-ok(cssNow.indexOf('.cal-day.t-rest{background:#d1fae5}') !== -1, 'P3 休息底色加深(#d1fae5)');
+ok(cssNow.indexOf('.cal-day.t-cardio{background:var(--blue-bg)}') !== -1, 'P1 有氧底色已还原浅蓝');
+ok(cssNow.indexOf('.cal-day.t-strength{background:var(--orange-bg)}') !== -1, 'P2 无氧底色已还原浅橙');
+ok(cssNow.indexOf('.cal-day.t-rest{background:var(--green-bg)}') !== -1, 'P3 休息底色已还原浅绿');
+ok(cssNow.indexOf('background:#dbeafe') === -1 && cssNow.indexOf('background:#d1fae5') === -1, 'P4 旧的加深色已移除');
+ok(/.chip-del\{[^}]*color:#f87171/.test(cssNow.replace(/\s+/g, '')), 'P5 删除角标改成淡红(#f87171)');
+ok(/.chip-del\{[^}]*border:1pxsolid#fecaca/.test(cssNow.replace(/\s+/g, '')), 'P6 删除角标带淡红描边');
 
 /* 提示文案 */
 const htmlNow = fs.readFileSync('index.html', 'utf8');
