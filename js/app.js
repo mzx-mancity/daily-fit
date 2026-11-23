@@ -140,8 +140,8 @@ function renderDay() {
         '<div class="item-main">' +
         '<label class="item-chk"><input type="checkbox" class="item-done" data-i="' + i + '"' + (it.done ? ' checked' : '') + '><span class="item-dot"></span></label>' +
         '<span class="item-name">' + esc(it.name) + '</span>' +
-        '<button class="item-del" data-i="' + i + '" aria-label="删除">✕</button>' +
         '</div>' +
+        '<button class="item-del" data-i="' + i + '" aria-label="删除">✕</button>' +
         '<input class="item-detail" data-i="' + i + '" placeholder="备注,如:20kg × 12" value="' + esc(it.detail || '') + '" maxlength="40">' +
         (showSets
           ? '<div class="sets-row">' +
@@ -225,8 +225,35 @@ function confirmSave() {
   renderAll();
 }
 
+/* ---------- 喝水建议(中国居民膳食指南 + 体重) ---------- */
+/* 指南:成年男性每日饮水 1700ml,女性 1500ml;运动/天热可增加到 2000ml+。
+   另一个常用经验:每公斤体重 30-40ml。这里以指南为下限,体重法作为个性化上限,取中间值。 */
+function waterAdvice() {
+  const w = Number(DB.profile.weightKg) || 0;
+  const byGuide = 1500;                                  /* 女性基准,男性 1700 */
+  const byWeight = w > 0 ? Math.round(w * 35 / 50) * 50 : 0;  /* 35ml/kg,取整到 50 */
+  let ml = byWeight > 0 ? Math.max(1500, Math.min(byWeight, 3000)) : byGuide;
+  let basis;
+  if (w > 0) {
+    basis = '按体重 ' + w + 'kg × 35ml/kg 估算 · 指南成人 1500-1700ml 为下限';
+  } else {
+    basis = '未填体重,采用指南成人基准值(填了体重会给更贴合的建议)';
+  }
+  return { ml: ml, basis: basis, hasWeight: w > 0 };
+}
+
+function renderAdvice() {
+  const a = waterAdvice();
+  if ($('advice-ml')) $('advice-ml').textContent = a.ml;
+  if ($('advice-basis')) $('advice-basis').textContent = a.basis;
+  const cup = Math.max(50, DB.profile.cupMl || 250);
+  const cups = Math.max(1, Math.round(a.ml / cup));
+  if ($('advice-apply')) $('advice-apply').textContent = '按建议调整目标(约 ' + cups + ' 杯 × ' + cup + 'ml)';
+}
+
 /* ---------- 渲染: 喝水页(永远针对今天) ---------- */
 function renderWater() {
+  renderAdvice();
   const p = DB.profile;
   const tk = TODAY();
   const day = DB.days[tk] || {};
@@ -318,7 +345,6 @@ function goPage(p) {
   if (!PAGES.includes(p)) p = 'workout';
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.page === p));
   document.querySelectorAll('.page').forEach(x => x.classList.toggle('active', x.id === 'page-' + p));
-  if (p !== 'workout') hideSnack();       /* 撤销条只属于锻炼页 */
   if (location.hash !== '#' + p) history.replaceState(null, '', '#' + p);
 }
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => goPage(t.dataset.page)));
@@ -334,7 +360,6 @@ function shiftMonth(delta) {
   const nowD = new Date();
   const inThisMonth = (y === nowD.getFullYear() && m === nowD.getMonth());
   viewDate = inThisMonth ? TODAY() : keyOf(new Date(y, m, 1));
-  hideSnack();
   renderAll();
 }
 
@@ -360,7 +385,6 @@ function pickDate(k) {
   calY = d.getFullYear(); calM = d.getMonth();
   if (monthChanged) renderCalendar(); else markSelection();
   renderDay();
-  hideSnack();
 }
 function goToday() { pickDate(TODAY()); }
 
@@ -375,22 +399,9 @@ $('cal-grid').addEventListener('click', e => {
 });
 
 /* ---------- 清空某天 ---------- */
-let snackTimer = 0;
-
-function showSnack(text) {
-  $('snack-text').textContent = text;
-  $('snack').hidden = false;
-  if (snackTimer) clearTimeout(snackTimer);
-  snackTimer = setTimeout(hideSnack, 3000);
-}
-function hideSnack() {
-  if (snackTimer) { clearTimeout(snackTimer); snackTimer = 0; }
-  $('snack').hidden = true;
-}
-
 function clearDay(k) {
   const day = DB.days[k];
-  if (!dayHasLog(day)) { showSnack('这天还没有记录'); return false; }
+  if (!dayHasLog(day)) return false;
   delete day.type;
   delete day.items;
   delete day.confirmed;
@@ -402,8 +413,6 @@ function clearDay(k) {
   save();
   renderCalendar();
   renderDay();
-  const d = fromKey(k);
-  showSnack('已清空 ' + (d.getMonth() + 1) + '月' + d.getDate() + '日 的记录');
   return true;
 }
 
@@ -554,6 +563,12 @@ function bindSetting(id, fn) {
 }
 bindSetting('set-cup', v => { const n = parseInt(v, 10); if (n >= 50) DB.profile.cupMl = n; });
 bindSetting('set-goal', v => { const n = parseInt(v, 10); if (n >= 1) DB.profile.cupsGoal = n; });
+$('advice-apply').addEventListener('click', () => {
+  const a = waterAdvice();
+  const cup = Math.max(50, DB.profile.cupMl || 250);
+  DB.profile.cupsGoal = Math.max(1, Math.round(a.ml / cup));
+  save(); renderAll();
+});
 
 /* ---------- 我的 ---------- */
 $('bmi-save').addEventListener('click', () => {
@@ -565,81 +580,27 @@ $('bmi-save').addEventListener('click', () => {
   DB.profile.heightCm = h; DB.profile.weightKg = w;
   showBmi(h, w, true); save(); renderMe();
 });
-/* 导出:WebView / iOS 主屏 App 里 a[download] 常常无效,
-   依次尝试 ① 系统分享面板 ② 下载 ③ 复制到剪贴板(带提示) */
-function exportData() {
-  const text = JSON.stringify(DB, null, 2);
-  const name = 'daily-fit-backup-' + TODAY() + '.json';
-  const done = (msg) => showSnack(msg);
-  const copy = () => {
-    const fallback = () => {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      let ok = false;
-      try { ok = document.execCommand && document.execCommand('copy'); } catch (e) { ok = false; }
-      document.body.removeChild(ta);
-      done(ok ? '数据已复制到剪贴板,粘贴到备忘录保存即可' : '导出失败,请用浏览器打开网页版再导出');
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => done('数据已复制到剪贴板,粘贴到备忘录保存即可'), fallback);
-    } else fallback();
-  };
-  const download = () => {
-    try {
-      const blob = new Blob([text], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      done('已导出 ' + name);
-      return true;
-    } catch (e) { return false; }
-  };
-  const nav = (typeof navigator !== 'undefined') ? navigator : {};
-  if (nav.canShare && typeof File === 'function') {
-    try {
-      const file = new File([text], name, { type: 'application/json' });
-      if (nav.canShare({ files: [file] })) {
-        nav.share({ files: [file], title: '小橘爱运动 · 备份' }).then(
-          () => done('已分享备份文件'),
-          () => { if (!download()) copy(); });
-        return;
-      }
-    } catch (e) {}
-  }
-  if (!download()) copy();
+/* ---------- 应用内使用说明弹层(不跳转页面,避免 WebView 卡死) ---------- */
+function openHelp() {
+  const m = $('help-modal');
+  if (!m) return;
+  m.hidden = false;
+  const body = $('help-body');
+  if (body) body.scrollTop = 0;
 }
-$('btn-export').addEventListener('click', exportData);
-$('btn-import').addEventListener('click', () => {
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = 'application/json,.json';
-  inp.onchange = () => {
-    const f = inp.files[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = () => {
-      try {
-        const d = JSON.parse(r.result);
-        if (!d || typeof d !== 'object' || !d.days) throw 0;
-        if (!confirm('导入将覆盖当前全部数据,确定吗?')) return;
-        DB = d;
-        if (!DB.profile) DB.profile = blank().profile;
-        if (!Array.isArray(DB.profile.weightLog)) DB.profile.weightLog = [];
-        save(); renderAll();
-      } catch (e) { showSnack('文件格式不对,导入失败'); }
-    };
-    r.readAsText(f);
-  };
-  inp.click();
-});
+function closeHelp() {
+  const m = $('help-modal');
+  if (m) m.hidden = true;
+}
+if ($('btn-help')) $('btn-help').addEventListener('click', openHelp);
+if ($('help-close')) $('help-close').addEventListener('click', closeHelp);
+if ($('help-mask')) $('help-mask').addEventListener('click', closeHelp);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHelp(); });
 
 renderAll();
+
+/* 供自测脚本读取当前内存数据(浏览器里无副作用) */
+if (typeof window !== 'undefined') window.__fitlog = { get DB() { return DB; }, save: save, setDB: function (d) { DB = d; } };
 
 // Service Worker:仅网页版注册(PWA 离线);WebView 容器里由 window.__NO_SW 关闭
 if ('serviceWorker' in navigator && !window.__NO_SW) {

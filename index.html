@@ -56,11 +56,6 @@
       <button class="day-clear" id="day-clear" hidden>清空</button>
     </div>
 
-    <!-- 操作提示:只在锻炼页、且刚清空后出现(不带撤销) -->
-    <div class="snack" id="snack" hidden>
-      <span class="snack-text" id="snack-text"></span>
-    </div>
-
     <div class="card">
       <div class="card-title">这天练什么</div>
       <div class="type-row">
@@ -129,6 +124,14 @@
       </div>
     </div>
 
+    <div class="card" id="water-advice-card">
+      <div class="card-title">今日建议饮水量</div>
+      <div class="advice-num"><span id="advice-ml">1500</span><span class="advice-unit">ml</span></div>
+      <div class="advice-sub" id="advice-sub">中国居民膳食指南:成人每日饮水 1500-1700ml</div>
+      <div class="advice-basis" id="advice-basis"></div>
+      <button class="save-btn ghost" id="advice-apply">按建议调整目标</button>
+    </div>
+
     <div class="card">
       <div class="card-title">喝水设置</div>
       <div class="set-grid">
@@ -171,19 +174,43 @@
     </div>
 
     <div class="card">
-      <div class="card-title">数据备份</div>
-      <div class="backup-row">
-        <button class="save-btn half" id="btn-export">📤 导出数据</button>
-        <button class="save-btn half ghost" id="btn-import">📥 导入数据</button>
-      </div>
-      <div class="set-note">数据仅保存在本机,换手机请先导出备份。</div>
+      <div class="card-title">数据说明</div>
+      <div class="set-note">所有记录只保存在这台手机里,不上传网络。卸载 App 或清除数据会一并删除,请勿随意清理。</div>
     </div>
 
-    <div class="about">
-      小橘爱运动 · v1.4.7 · 本地离线优先<br>
-      <a class="about-link" href="docs/USAGE.md">使用说明 / 安装教程</a>
+    <div class="card">
+      <div class="card-title">帮助</div>
+      <button class="save-btn ghost" id="btn-help">📖 使用说明 / 安装教程</button>
     </div>
+
+    <div class="about">小橘爱运动 · v1.4.8 · 本地离线优先</div>
   </section>
+
+  <!-- 使用说明(应用内弹层,不跳转) -->
+  <div class="modal" id="help-modal" hidden>
+    <div class="modal-mask" id="help-mask"></div>
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <span class="modal-title">使用说明</span>
+        <button class="modal-close" id="help-close" aria-label="关闭">✕</button>
+      </div>
+      <div class="modal-body" id="help-body">
+        <h4>📅 锻炼</h4>
+        <p>打开就是日历:有氧=蓝、无氧=橙、休息=绿,已确认的右下角有 ✓。点任意一天看/改那天内容,左右滑动翻月。</p>
+        <p><b>无氧项目</b>可以设「目标组数」,练一组点一次 <b>+</b>,做满自动打勾;点 <b>−</b> 可撤销一组。</p>
+        <p>某天记错了,点日期右边的<b>清空</b>即可删掉那天的记录(项目右上角 ✕ 可单独删一个项目)。</p>
+        <h4>💧 喝水</h4>
+        <p>按你的水杯容量记杯数;页面会按「我的」里填的体重给出<b>建议饮水量</b>,可一键采用。</p>
+        <h4>📊 我的</h4>
+        <p>填身高体重算 BMI,并记录体重历史。体重也会用于喝水建议。</p>
+        <h4>📲 安装方式</h4>
+        <p><b>安卓</b>:浏览器打开 mzx-mancity.github.io/daily-fit/download/latest.apk 下载安装,允许「未知来源」即可。</p>
+        <p><b>iPhone / iPad</b>:用 <b>Safari</b> 打开 mzx-mancity.github.io/daily-fit/ → 底部分享按钮 → 添加到主屏幕。</p>
+        <h4>⚠️ 数据</h4>
+        <p>所有记录只存在这台手机,不联网、不上传。卸载或清理数据会丢失,请勿随意清理。</p>
+      </div>
+    </div>
+  </div>
 
   <!-- 底部导航 -->
   <nav class="tabbar">

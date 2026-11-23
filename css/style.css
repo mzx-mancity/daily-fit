@@ -107,8 +107,8 @@ body{
 .chip{border:1.5px dashed var(--line);background:#fafafa;border-radius:999px;padding:6px 13px;font-size:13px;color:var(--gray);cursor:pointer;max-width:100%}
 .chip:active{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
 .item-list{list-style:none}
-.item-list li{display:block;background:#fafafa;border:1px solid var(--line);
-  border-radius:10px;padding:8px 10px;margin-bottom:8px;min-width:0}
+.item-list li{position:relative;display:block;background:#fafafa;border:1px solid var(--line);
+  border-radius:10px;padding:8px 34px 8px 10px;margin-bottom:8px;min-width:0}
 .item-main{display:flex;align-items:center;gap:8px;min-width:0}
 .item-list li.done{background:var(--green-bg);border-color:#bbf7d0}
 .item-list li.done .item-name{text-decoration:line-through;color:#6b7280}
@@ -120,8 +120,11 @@ body{
   border:1px solid var(--line);padding:7px 9px;font-size:13px;color:var(--text);outline:none}
 .item-detail::placeholder{color:#c0c4cc}
 .item-detail:focus{border-color:var(--green)}
-.item-del{border:none;background:#fef2f2;color:#ef4444;width:26px;height:26px;border-radius:8px;font-size:14px;
-  cursor:pointer;flex:none;margin-left:auto}
+/* 项目删除:固定在卡片右上角 */
+.item-del{position:absolute;top:6px;right:6px;border:none;background:#fef2f2;color:#ef4444;
+  width:24px;height:24px;border-radius:8px;font-size:13px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;touch-action:manipulation;z-index:2}
+.item-del:active{background:#fee2e2;transform:scale(.94)}
 .copy-last{width:100%;margin-top:4px;border:1.5px dashed var(--line);background:#fff;color:var(--gray);
   border-radius:10px;padding:9px 0;font-size:13px;cursor:pointer}
 .copy-last:active{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
@@ -232,3 +235,26 @@ body { -webkit-touch-callout: none; }
 .step-btn:active{background:var(--bg);transform:scale(.94)}
 .step-btn.on{background:var(--orange-bg);border-color:#fed7aa;color:#c2410c;font-weight:700}
 .step-btn.on:active{background:#ffedd5}
+/* ---------- 应用内使用说明弹层 ---------- */
+.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.modal[hidden]{display:none}
+.modal-mask{position:absolute;inset:0;background:rgba(15,23,42,.45)}
+.modal-sheet{position:relative;width:100%;max-width:480px;max-height:82vh;display:flex;flex-direction:column;
+  background:#fff;border-radius:18px 18px 0 0;padding-bottom:env(safe-area-inset-bottom);animation:sheetUp .22s ease}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.modal-title{font-weight:700;font-size:16px}
+.modal-close{border:none;background:#f1f5f9;color:#475569;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer}
+.modal-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 22px;font-size:13px;line-height:1.75;color:#374151}
+.modal-body h4{margin:14px 0 6px;font-size:14px;color:var(--text)}
+.modal-body h4:first-child{margin-top:4px}
+.modal-body p{margin:4px 0}
+
+/* ---------- 喝水建议 ---------- */
+#water-advice-card{background:linear-gradient(180deg,#eff8ff,#ffffff)}
+.advice-num{text-align:center;font-size:32px;font-weight:800;color:#0369a1;line-height:1.1}
+.advice-unit{font-size:14px;color:var(--gray);font-weight:600;margin-left:4px}
+.advice-sub{text-align:center;font-size:12px;color:var(--gray);margin-top:6px}
+.advice-basis{text-align:center;font-size:11px;color:#94a3b8;margin-top:4px;line-height:1.6}
+#advice-apply{margin-top:10px}
+

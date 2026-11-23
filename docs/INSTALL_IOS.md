@@ -32,7 +32,7 @@ https://mzx-mancity.github.io/daily-fit/
 A:只有 Safari 支持「添加到主屏幕」这个 iOS 原生功能。用微信/QQ 内置浏览器打开也不行,要先点右上角「…」→「在 Safari 中打开」。
 
 **Q:数据会丢吗?**
-A:不会,存在手机本地。但**清理 Safari 网站数据**会清掉它。重要数据请定期到「我的」页点「导出数据」备份(会下载一个 JSON 文件)。
+A:不会,存在手机本地。但**清理 Safari 网站数据**会清掉它(目前没有导出功能,清理前请三思)。
 
 **Q:首页打开是白页?**
 A:确认链接是 https://mzx-mancity.github.io/daily-fit/ (新的用户名 mzx-mancity),旧链接已经失效。
@@ -41,4 +41,4 @@ A:确认链接是 https://mzx-mancity.github.io/daily-fit/ (新的用户名 mzx-
 A:这是网页 App,不在 App Store。如果以后想上架,需要有 Apple 开发者账号并在 Mac 上用 Xcode 把网页打包成原生 App,我可以帮你准备源码。
 
 **Q:和安卓版数据通用吗?**
-A:不通用,各存各的。可以用「导出/导入 JSON」手动搬家。
+A:不通用,各存各的,数据不会同步。

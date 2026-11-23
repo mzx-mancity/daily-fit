@@ -20,7 +20,8 @@ function el(id) { if (!els[id]) els[id] = makeEl(id); return els[id]; }
   'confirm-chk','confirm-save','confirm-state','confirm-card',
   'ring-fg','ring-cups','ring-goal','ring-ml','cup-plus','cup-minus','custom-ml','custom-add',
   'set-cup','set-goal','set-note','water-bars','water-bar-x','water-date',
-  'cal-clear','cal-clear-text','cal-clear-ok','cal-clear-cancel',
+  'btn-help','help-modal','help-body','help-close','help-mask',
+  'advice-ml','advice-sub','advice-basis','advice-apply',
   'bmi-h','bmi-w','bmi-save','bmi-result','bmi-num','bmi-tag','bmi-pointer','wlist','btn-export','btn-import'
 ].forEach(el);
 el('cal-clear').hidden = true;      /* 初始隐藏(真实 DOM 里就是 hidden 属性) */
@@ -48,7 +49,9 @@ const document = {
     if (sel === '#quick-row .chip') return chips;
     return [];
   },
-  createElement: function() { return makeEl('anon'); }
+  createElement: function() { return makeEl('anon'); },
+  addEventListener: function(){},
+  body: { appendChild: function(){}, removeChild: function(){} }
 };
 let fakeNow = Date.now();
 const RealDate = Date;
@@ -59,7 +62,7 @@ const sandbox = {
   Date: FakeDate,
   document: document, localStorage: localStorage, location: location, history: history,
   navigator: { serviceWorker: { register: function() { return { catch: function() {} }; } } },
-  window: { addEventListener: function(){}, scrollTo: function(){} },
+  window: { addEventListener: function(){}, scrollTo: function(){}, __NO_SW: 1 },
   console: console,
   setTimeout: function(){ return 0; }, clearTimeout: function(){},
   confirm: function(){ return true; }, alert: function(){},
@@ -218,8 +221,8 @@ ok(css.indexOf('left:0;right:0') !== -1, 'C45 tabbar 用 left/right 定位');
 ok(html.indexOf('page-diet') === -1 && html.indexOf('饮食') === -1, 'C46 饮食页已删除');
 ok(html.indexOf('Keep') === -1 && html.indexOf('keep-') === -1, 'C47 Keep 相关已删除');
 ok(html.indexOf('cal-grid') !== -1 && html.indexOf('data-page="water"') !== -1, 'C48 三 Tab + 日历结构');
-ok(/dailyfit-v14/.test(sw), 'C49 SW 缓存版本 v14');
-ok(html.indexOf('v1.4.7') !== -1, 'C50 版本号 v1.4.7');
+ok(/dailyfit-v15/.test(sw), 'C49 SW 缓存版本 v15');
+ok(html.indexOf('v1.4.8') !== -1, 'C50 版本号 v1.4.8');
 ok(html.indexOf('小橘爱运动') !== -1, 'C73 网页标题/底部已改名');
 ok(html.indexOf('apple-mobile-web-app-capable') !== -1 && html.indexOf('apple-touch-icon') !== -1, 'C78 iOS 全屏 Web App meta 齐全');
 ok(html.indexOf('format-detection') !== -1, 'C79 iOS 电话号误识别已禁用');
@@ -309,9 +312,9 @@ const cellOf = (k) => {
   return m ? m[1] : '(missing)';
 };
 ok(cellOf(ck).indexOf('t-cardio') === -1 && cellOf(ck).indexOf('cal-ok') === -1, 'C66 该日颜色与✓都消失(' + cellOf(ck) + ')');
-ok(el('snack').hidden === false && el('snack-text').textContent.indexOf('已清空') === 0, 'C67 出现清空提示(' + el('snack-text').textContent + ')');
-ok(fs.readFileSync('index.html', 'utf8').indexOf('snack-undo') === -1, 'C68 撤销按钮已删除(HTML)');
-ok(fs.readFileSync('js/app.js', 'utf8').indexOf('undoClear') === -1, 'C69 撤销逻辑已删除(JS)');
+ok(fs.readFileSync('index.html', 'utf8').indexOf('id="snack"') === -1, 'C67 黑色提示条已从页面删除');
+ok(fs.readFileSync('index.html', 'utf8').indexOf('id="snack"') === -1 && fs.readFileSync('js/app.js', 'utf8').indexOf('showSnack') === -1, 'C68 提示条与相关逻辑已全部删除');
+ok(fs.readFileSync('index.html', 'utf8').indexOf('btn-export') === -1 && fs.readFileSync('js/app.js', 'utf8').indexOf('exportData') === -1, 'C69 导出功能已删除');
 
 /* 清空保留喝水 */
 advance(2000);
@@ -333,7 +336,7 @@ function fromKeyCK(k) { const a = k.split('-').map(Number); return new Date(a[0]
 
 /* 结构 */
 const swTxt = fs.readFileSync('sw.js', 'utf8');
-ok(swTxt.indexOf('dailyfit-v14') !== -1, 'C74 SW 缓存版本 v14');
+ok(swTxt.indexOf('dailyfit-v15') !== -1, 'C74 SW 缓存版本 v15');
 ok(fs.readFileSync('index.html', 'utf8').indexOf('cal-clear') === -1, 'C75 旧的日历内确认条已移除');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('touch-action:manipulation') !== -1, 'C77 已加 touch-action 消除点击延迟');
 ok(fs.readFileSync('css/style.css', 'utf8').indexOf('display-mode: standalone') !== -1, 'C80 iOS 独立 App 模式样式存在');
@@ -374,19 +377,51 @@ fire(typeBtns[0], 'click');
 sandbox.renderAll();
 ok(el('item-list').innerHTML.indexOf('sets-row') === -1, 'S11 有氧不显示组数行');
 
-/* ---- 导出:提供多种兜底 ---- */
+/* ---- 帮助弹层(应用内,不跳转) ---- */
+ok(html.indexOf('help-modal') !== -1 && html.indexOf('href="docs/') === -1, 'H1 使用说明改为应用内弹层,无外链跳转');
+ok(html.indexOf('id="btn-help"') !== -1, 'H2 我的页有「使用说明」按钮');
+el('help-modal').hidden = true;
+fire(el('btn-help'), 'click');
+ok(el('help-modal').hidden === false, 'H3 点按钮打开说明弹层');
+fire(el('help-close'), 'click');
+ok(el('help-modal').hidden === true, 'H4 点 ✕ 关闭');
+fire(el('btn-help'), 'click');
+fire(el('help-mask'), 'click');
+ok(el('help-modal').hidden === true, 'H5 点遮罩关闭');
+
+/* ---- 喝水建议(指南 + 体重) ---- */
+const setDB = (fn) => { sandbox.window.__fitlog.setDB(JSON.parse(JSON.stringify(sandbox.window.__fitlog.DB))); fn(sandbox.window.__fitlog.DB); sandbox.window.__fitlog.save(); sandbox.renderAll(); };
+setDB(function (d) { d.profile.weightKg = null; });
+ok(String(el('advice-ml').textContent) === '1500', 'W1 未填体重时用指南基准 1500ml(' + el('advice-ml').textContent + ')');
+setDB(function (d) { d.profile.weightKg = 60; });
+ok(Number(el('advice-ml').textContent) === 2100, 'W2 60kg x 35ml = 2100ml(' + el('advice-ml').textContent + ')');
+setDB(function (d) { d.profile.weightKg = 100; });
+ok(Number(el('advice-ml').textContent) === 3000, 'W3 上限封顶 3000ml(' + el('advice-ml').textContent + ')');
+setDB(function (d) { d.profile.weightKg = 30; });
+ok(Number(el('advice-ml').textContent) === 1500, 'W4 下限兜底 1500ml(体重过小时不低)');
+
+setDB(function (d) { d.profile.weightKg = 60; d.profile.cupMl = 250; d.profile.cupsGoal = 5; });
+fire(el('advice-apply'), 'click');
+ok(DBd().profile.cupsGoal === 8, 'W5 一键采用建议:2100/250 = 8 杯(' + DBd().profile.cupsGoal + ')');
+
+/* ---- 项目删除按钮在右上角 ---- */
+const cssAll = fs.readFileSync('css/style.css', 'utf8');
+ok(/\.item-del\{position:absolute;top:6px;right:6px/.test(cssAll.replace(/\s+/g, '')), 'D1 项目删除按钮定位在右上角');
+const itemHtml = el('item-list').innerHTML;
+ok(itemHtml.indexOf('class="item-del"') !== -1, 'D2 项目行内仍有删除按钮');
+
+/* ---- 导出功能应已删除 ---- */
 const jsSrc = fs.readFileSync('js/app.js', 'utf8');
-ok(jsSrc.indexOf('navigator.clipboard') !== -1 || jsSrc.indexOf('clipboard.writeText') !== -1, 'E1 导出包含剪贴板兜底');
-ok(jsSrc.indexOf('canShare') !== -1, 'E2 导出包含系统分享兜底');
-ok(jsSrc.indexOf('execCommand') !== -1, 'E3 导出包含 execCommand 兜底');
+ok(jsSrc.indexOf('exportData') === -1, 'E1 导出逻辑已删除');
+ok(html.indexOf('导出数据') === -1, 'E2 页面上已无导出按钮');
+ok(html.indexOf('导入数据') === -1, 'E3 页面上已无导入按钮');
 
 /* 提示文案 */
 const htmlNow = fs.readFileSync('index.html', 'utf8');
 ok(htmlNow.indexOf('点日期看当天记录') !== -1, 'C76 页面上有新提示文案');
-ok(htmlNow.indexOf('id="snack"') > htmlNow.indexOf('id="page-workout"') && htmlNow.indexOf('id="snack"') < htmlNow.indexOf('id="page-water"'),
-   'C82 撤销条位于锻炼页内部(不在全局)');
-sandbox.hideSnack(); sandbox.goPage('water');
-ok(el('snack').hidden === true, 'C83 切到喝水页后撤销条自动隐藏');
+ok(htmlNow.indexOf('id="snack"') === -1, 'C82 黑色提示条整块已删除,不再出现');
+sandbox.goPage('water');
+ok(el('page-water').classList !== undefined, 'C83 切页正常(喝水页)');
 sandbox.goPage('workout');
 
 if (fails.length) { console.log('SMOKE FAILED:', fails.join('; ')); process.exit(1); }
